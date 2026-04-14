@@ -150,6 +150,31 @@ class FamilyTree:
         del self.members[member_id]
         print("Anggota berhasil dihapus.")
         return True
+    
+    # =========================
+    # SEARCH
+    # =========================
+    def search_member(self, keyword):
+        keyword = keyword.lower()
+        results = []
+        for member in self.members.values():
+            if keyword in member.name.lower() or keyword == member.member_id:
+                results.append(member)
+        return results
+
+
+    # =========================
+    # SORTING
+    # =========================
+    def sort_members(self, by="name"):
+        if by == "name":
+            return sorted(self.members.values(), key=lambda m: m.name.lower())
+        elif by == "id":
+            return sorted(self.members.values(), key=lambda m: m.member_id)
+        else:
+            print("Kriteria sorting tidak valid. Gunakan 'name' atau 'id'.")
+            return list(self.members.values())
+
 
     # =========================
     # BANTU FILE HANDLING
@@ -244,6 +269,8 @@ def main():
         print("5. Update anggota")
         print("6. Hapus anggota")
         print("7. Simpan data ke CSV")
+        print("8. Cari anggota")
+        print("9. Urutkan anggota")
         print("0. Keluar")
 
         choice = input("Pilih menu: ").strip()
@@ -287,6 +314,22 @@ def main():
 
         elif choice == "7":
             save_to_csv(tree)
+            
+        elif choice == "8":
+            keyword = input_nonempty("Masukkan nama atau ID yang ingin dicari: ").lower()
+            found = False
+            for member in tree.members.values():
+                if keyword in member.name.lower() or keyword == member.member_id:
+                    print(member)
+                    found = True
+            if not found:
+                print("Anggota tidak ditemukan.")
+                
+        elif choice == "9":
+            sorted_members = sorted(tree.members.values(), key=lambda m: m.name.lower())
+            print("\n=== ANGGOTA KELUARGA TERURUT ===")
+            for member in sorted_members:
+                print(member)
 
         elif choice == "0":
             save_to_csv(tree)
