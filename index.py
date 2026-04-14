@@ -160,20 +160,34 @@ class FamilyTree:
         for member in self.members.values():
             if keyword in member.name.lower() or keyword == member.member_id:
                 results.append(member)
-        return results
+                
+        if not results:
+            print("Anggota tidak ditemukan.")
+            return
+        
+        print("\n=== HASIL PENCARIAN ===")
+        for member in results:
+            print(member)
 
 
     # =========================
     # SORTING
     # =========================
     def sort_members(self, by="name"):
+        if not self.members:
+            print("Data keluarga kosong.")
+            return
+        
         if by == "name":
-            return sorted(self.members.values(), key=lambda m: m.name.lower())
+            sorted_members = sorted(self.members.values(), key=lambda m: m.name.lower())
         elif by == "id":
-            return sorted(self.members.values(), key=lambda m: m.member_id)
+            sorted_members = sorted(self.members.values(), key=lambda m: m.member_id)
         else:
-            print("Kriteria sorting tidak valid. Gunakan 'name' atau 'id'.")
-            return list(self.members.values())
+            print("Kriteria sorting tidak valid.")
+            return
+        print(f"\n=== ANGGOTA KELUARGA TERURUT BERDASARKAN {by.upper()} ===")
+        for member in sorted_members:
+            print(member)
 
 
     # =========================
@@ -326,10 +340,17 @@ def main():
                 print("Anggota tidak ditemukan.")
                 
         elif choice == "9":
-            sorted_members = sorted(tree.members.values(), key=lambda m: m.name.lower())
-            print("\n=== ANGGOTA KELUARGA TERURUT ===")
-            for member in sorted_members:
-                print(member)
+            print("Urutkan berdasarkan:")
+            print("1. Nama")
+            print("2. ID")
+            sort_choice = input("Pilih kriteria urut: ").strip()
+            
+            if sort_choice == "1":
+                tree.sort_members(by="name")
+            elif sort_choice == "2":
+                tree.sort_members(by="id")
+            else:
+                print("Kriteria urut tidak valid.")
 
         elif choice == "0":
             save_to_csv(tree)
