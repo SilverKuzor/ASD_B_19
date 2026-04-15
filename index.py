@@ -1,12 +1,11 @@
+
+# Kelmopok 19
+# Silsila
+#
+#
+#
 import csv
 import os
-# =============================
-# KELOMPOK 19
-#
-#
-#
-# =============================
-
 class FamilyMember:
     def __init__(self, member_id, name, gender, parent_id=None):
         self.member_id = str(member_id)
@@ -86,7 +85,7 @@ class FamilyTree:
             for child in member.children:
                 print(f"- {child.name} (ID: {child.member_id})")
         else:
-            print("Anak: Tidak adaa")
+            print("Anak: Tidak ada")
 
     def show_family_tree(self):
         if not self.members:
@@ -132,7 +131,6 @@ class FamilyTree:
 
         member = self.members[member_id]
 
-        # hapus dari parent
         if member.parent_id:
             parent = self.members[member.parent_id]
             parent.children = [child for child in parent.children if child.member_id != member_id]
@@ -140,7 +138,6 @@ class FamilyTree:
             if member_id in self.root_ids:
                 self.root_ids.remove(member_id)
 
-        # pindahkan anak ke parent lama / jadi root
         if member.children:
             if member.parent_id:
                 parent = self.members[member.parent_id]
@@ -155,45 +152,6 @@ class FamilyTree:
         del self.members[member_id]
         print("Anggota berhasil dihapus.")
         return True
-    
-    # =========================
-    # SEARCH
-    # =========================
-    def search_member(self, keyword):
-        keyword = keyword.lower()
-        results = []
-        for member in self.members.values():
-            if keyword in member.name.lower() or keyword == member.member_id:
-                results.append(member)
-                
-        if not results:
-            print("Anggota tidak ditemukan.")
-            return
-        
-        print("\n=== HASIL PENCARIAN ===")
-        for member in results:
-            print(member)
-
-
-    # =========================
-    # SORTING
-    # =========================
-    def sort_members(self, by="name"):
-        if not self.members:
-            print("Data keluarga kosong.")
-            return
-        
-        if by == "name":
-            sorted_members = sorted(self.members.values(), key=lambda m: m.name.lower())
-        elif by == "id":
-            sorted_members = sorted(self.members.values(), key=lambda m: m.member_id)
-        else:
-            print("Kriteria sorting tidak valid.")
-            return
-        print(f"\n=== ANGGOTA KELUARGA TERURUT BERDASARKAN {by.upper()} ===")
-        for member in sorted_members:
-            print(member)
-
 
     # =========================
     # BANTU FILE HANDLING
@@ -205,7 +163,6 @@ class FamilyTree:
         self.members = {}
         self.root_ids = []
 
-        # tahap 1: buat semua member dulu
         for row in rows:
             member_id = str(row["id"])
             name = row["name"]
@@ -214,7 +171,6 @@ class FamilyTree:
 
             self.members[member_id] = FamilyMember(member_id, name, gender, parent_id)
 
-        # tahap 2: hubungkan parent-child
         for member in self.members.values():
             if member.parent_id is None:
                 self.root_ids.append(member.member_id)
@@ -242,16 +198,20 @@ def load_from_csv(tree, filename="keluarga.csv"):
         print(f"File {filename} belum ada. Data awal kosong.")
         return
 
-    with open(filename, mode="r", newline="", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-        rows = list(reader)
+    try:
+        with open(filename, mode="r", newline="", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            rows = list(reader)
 
-    tree.build_from_rows(rows)
-    print(f"Data berhasil dibaca dari {filename}")
+        tree.build_from_rows(rows)
+        print(f"Data berhasil dibaca dari {filename}")
+
+    except Exception as e:
+        print(f"Terjadi kesalahan saat membaca file: {e}")
 
 
 # =========================
-# VALIDASI INPUT DASAR
+# VALIDASI INPUT
 # =========================
 def input_nonempty(prompt):
     while True:
@@ -260,16 +220,72 @@ def input_nonempty(prompt):
             return data
         print("Input tidak boleh kosong.")
 
+
+def input_numeric_id(prompt):
+    while True:
+        data = input(prompt).strip()
+        if data.isdigit():
+            return data
+        print("ID harus berupa angka. Silakan ulangi.")
+
+
 def input_gender(prompt):
     while True:
         gender = input(prompt).strip().upper()
         if gender in ["L", "P"]:
             return gender
-        print("Gender harus L atau P.")
+        print("Gender harus L atau P. Silakan ulangi.")
 
-def input_optional_parent(prompt):
-    data = input(prompt).strip()
-    return data if data else None
+
+def input_parent_id(tree, prompt):
+    while True:
+        data = input(prompt).strip()
+
+        # boleh kosong
+        if data == "":
+            return None
+
+        # harus angka
+        if not data.isdigit():
+            print("Parent ID harus berupa angka atau kosongkan saja.")
+            continue
+
+        # harus ada di data
+        if data not in tree.members:
+            print("Parent ID tidak ditemukan. Ulangi lagi atau kosongkan.")
+            continue
+
+        return data
+
+
+def input_existing_id(tree, prompt):
+    while True:
+        data = input(prompt).strip()
+
+        if not data.isdigit():
+            print("ID harus berupa angka. Silakan ulangi.")
+            continue
+
+        if data not in tree.members:
+            print("ID tidak ditemukan. Silakan ulangi.")
+            continue
+
+        return data
+
+
+def input_new_member_id(tree, prompt):
+    while True:
+        data = input(prompt).strip()
+
+        if not data.isdigit():
+            print("ID harus berupa angka. Silakan ulangi.")
+            continue
+
+        if data in tree.members:
+            print("ID sudah dipakai. Masukkan ID lain.")
+            continue
+
+        return data
 
 
 # =========================
@@ -288,17 +304,15 @@ def main():
         print("5. Update anggota")
         print("6. Hapus anggota")
         print("7. Simpan data ke CSV")
-        print("8. Cari anggota")
-        print("9. Urutkan anggota")
         print("0. Keluar")
 
         choice = input("Pilih menu: ").strip()
 
         if choice == "1":
-            member_id = input_nonempty("Masukkan ID: ")
+            member_id = input_new_member_id(tree, "Masukkan ID: ")
             name = input_nonempty("Masukkan nama: ")
             gender = input_gender("Masukkan gender (L/P): ")
-            parent_id = input_optional_parent("Masukkan Parent ID (kosongkan jika tidak ada): ")
+            parent_id = input_parent_id(tree, "Masukkan Parent ID (kosongkan jika tidak ada): ")
 
             tree.add_member(member_id, name, gender, parent_id)
 
@@ -309,53 +323,34 @@ def main():
             tree.show_family_tree()
 
         elif choice == "4":
-            member_id = input_nonempty("Masukkan ID anggota: ")
+            member_id = input_existing_id(tree, "Masukkan ID anggota: ")
             tree.show_member_detail(member_id)
 
         elif choice == "5":
-            member_id = input_nonempty("Masukkan ID anggota yang ingin diupdate: ")
+            member_id = input_existing_id(tree, "Masukkan ID anggota yang ingin diupdate: ")
             new_name = input("Nama baru (kosongkan jika tidak diubah): ").strip()
-            new_gender = input("Gender baru (L/P, kosongkan jika tidak diubah): ").strip().upper()
+
+            while True:
+                new_gender = input("Gender baru (L/P, kosongkan jika tidak diubah): ").strip().upper()
+                if new_gender == "":
+                    new_gender = None
+                    break
+                elif new_gender in ["L", "P"]:
+                    break
+                else:
+                    print("Gender tidak valid. Masukkan L, P, atau kosongkan.")
 
             if new_name == "":
                 new_name = None
-            if new_gender == "":
-                new_gender = None
-            elif new_gender not in ["L", "P"]:
-                print("Gender tidak valid.")
-                continue
 
             tree.update_member(member_id, new_name, new_gender)
 
         elif choice == "6":
-            member_id = input_nonempty("Masukkan ID anggota yang ingin dihapus: ")
+            member_id = input_existing_id(tree, "Masukkan ID anggota yang ingin dihapus: ")
             tree.delete_member(member_id)
 
         elif choice == "7":
             save_to_csv(tree)
-            
-        elif choice == "8":
-            keyword = input_nonempty("Masukkan nama atau ID yang ingin dicari: ").lower()
-            found = False
-            for member in tree.members.values():
-                if keyword in member.name.lower() or keyword == member.member_id:
-                    print(member)
-                    found = True
-            if not found:
-                print("Anggota tidak ditemukan.")
-                
-        elif choice == "9":
-            print("Urutkan berdasarkan:")
-            print("1. Nama")
-            print("2. ID")
-            sort_choice = input("Pilih kriteria urut: ").strip()
-            
-            if sort_choice == "1":
-                tree.sort_members(by="name")
-            elif sort_choice == "2":
-                tree.sort_members(by="id")
-            else:
-                print("Kriteria urut tidak valid.")
 
         elif choice == "0":
             save_to_csv(tree)
@@ -363,7 +358,7 @@ def main():
             break
 
         else:
-            print("Menu tidak valid.")
+            print("Menu tidak valid. Silakan pilih menu yang tersedia.")
 
 
 if __name__ == "__main__":
