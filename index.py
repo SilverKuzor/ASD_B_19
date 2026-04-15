@@ -1,6 +1,11 @@
 import csv
 import os
-
+# =============================
+# KELOMPOK 19
+#
+#
+#
+# =============================
 
 class FamilyMember:
     def __init__(self, member_id, name, gender, parent_id=None):
@@ -81,7 +86,7 @@ class FamilyTree:
             for child in member.children:
                 print(f"- {child.name} (ID: {child.member_id})")
         else:
-            print("Anak: Tidak ada")
+            print("Anak: Tidak adaa")
 
     def show_family_tree(self):
         if not self.members:
