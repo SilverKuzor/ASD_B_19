@@ -2,9 +2,9 @@ import csv
 import os
 # =============================
 # KELOMPOK 19
-#
-#
-#
+# J0403251020 - Bunga Auppa Anpal
+# J0403251054 - Rieska Riza
+# J0403251137 - Muhammad Faqih Husnan
 # =============================
 
 class FamilyMember:
