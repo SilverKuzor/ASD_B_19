@@ -6,6 +6,8 @@ import os
 # J0403251054 - Rieska Riza
 # J0403251137 - Muhammad Faqih Husnan
 # =============================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE = os.path.join(BASE_DIR, "keluarga.csv")
 
 class FamilyMember:
     def __init__(self, member_id, name, gender, parent_id=None):
@@ -226,29 +228,44 @@ class FamilyTree:
 # =========================
 # FILE HANDLING CSV
 # =========================
-def save_to_csv(tree, filename="keluarga.csv"):
+def save_to_csv(tree, filename=CSV_FILE):
     data = tree.get_all_data()
 
-    with open(filename, mode="w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=["id", "name", "gender", "parent_id"])
-        writer.writeheader()
-        writer.writerows(data)
+    file_exists = os.path.exists(filename)
 
-    print(f"Data berhasil disimpan ke {filename}")
+    try:
+        with open(filename, mode="w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(
+                file,
+                fieldnames=["id", "name", "gender", "parent_id"]
+            )
 
+            writer.writeheader()
+            writer.writerows(data)
 
-def load_from_csv(tree, filename="keluarga.csv"):
+        if file_exists:
+            print(f"Data berhasil diperbarui ke file {filename}")
+        else:
+            print(f"File {filename} berhasil dibuat dan data disimpan.")
+
+    except Exception as e:
+        print(f"Terjadi kesalahan saat menyimpan file: {e}")
+
+def load_from_csv(tree, filename=CSV_FILE):
     if not os.path.exists(filename):
         print(f"File {filename} belum ada. Data awal kosong.")
         return
 
-    with open(filename, mode="r", newline="", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-        rows = list(reader)
+    try:
+        with open(filename, mode="r", newline="", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            rows = list(reader)
 
-    tree.build_from_rows(rows)
-    print(f"Data berhasil dibaca dari {filename}")
+        tree.build_from_rows(rows)
+        print(f"Data berhasil dibaca dari {filename}")
 
+    except Exception as e:
+        print(f"Terjadi kesalahan saat membaca file: {e}")
 
 # =========================
 # VALIDASI INPUT DASAR
