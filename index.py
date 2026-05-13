@@ -260,6 +260,21 @@ def input_nonempty(prompt):
             return data
         print("Input tidak boleh kosong.")
 
+# VALIDASI ID HARUS ANGKA
+def input_numeric_id(prompt):
+    while True:
+        data = input(prompt).strip()
+
+        if not data:
+            print("ID tidak boleh kosong.")
+            continue
+
+        if not data.isdigit():
+            print("Error: ID hanya boleh berisi angka.")
+            continue
+
+        return data
+
 def input_gender(prompt):
     while True:
         gender = input(prompt).strip().upper()
@@ -267,9 +282,19 @@ def input_gender(prompt):
             return gender
         print("Gender harus L atau P.")
 
+# VALIDASI PARENT ID OPSIONAL TAPI HARUS ANGKA
 def input_optional_parent(prompt):
-    data = input(prompt).strip()
-    return data if data else None
+    while True:
+        data = input(prompt).strip()
+
+        if data == "":
+            return None
+
+        if not data.isdigit():
+            print("Error: Parent ID hanya boleh berisi angka.")
+            continue
+
+        return data
 
 
 # =========================
@@ -295,7 +320,7 @@ def main():
         choice = input("Pilih menu: ").strip()
 
         if choice == "1":
-            member_id = input_nonempty("Masukkan ID: ")
+            member_id = input_numeric_id("Masukkan ID: ")
             name = input_nonempty("Masukkan nama: ")
             gender = input_gender("Masukkan gender (L/P): ")
             parent_id = input_optional_parent("Masukkan Parent ID (kosongkan jika tidak ada): ")
@@ -309,11 +334,11 @@ def main():
             tree.show_family_tree()
 
         elif choice == "4":
-            member_id = input_nonempty("Masukkan ID anggota: ")
+            member_id = input_numeric_id("Masukkan ID anggota: ")
             tree.show_member_detail(member_id)
 
         elif choice == "5":
-            member_id = input_nonempty("Masukkan ID anggota yang ingin diupdate: ")
+            member_id = input_numeric_id("Masukkan ID anggota yang ingin diupdate: ")
             new_name = input("Nama baru (kosongkan jika tidak diubah): ").strip()
             new_gender = input("Gender baru (L/P, kosongkan jika tidak diubah): ").strip().upper()
 
@@ -328,7 +353,7 @@ def main():
             tree.update_member(member_id, new_name, new_gender)
 
         elif choice == "6":
-            member_id = input_nonempty("Masukkan ID anggota yang ingin dihapus: ")
+            member_id = input_numeric_id("Masukkan ID anggota yang ingin dihapus: ")
             tree.delete_member(member_id)
 
         elif choice == "7":
