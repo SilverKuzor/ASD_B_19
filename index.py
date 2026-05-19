@@ -1,5 +1,6 @@
 import csv
 import os
+from datetime import datetime
 # =============================
 #
 # PROGRAM SILSILAH KELUARGA
@@ -12,6 +13,7 @@ import os
 # =============================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_FILE = os.path.join(BASE_DIR, "keluarga.csv")
+LOG_FILE = os.path.join(BASE_DIR, "log_perubahan.txt") 
 
 class FamilyMember:
     def __init__(self, member_id, name, gender, parent_id=None):
@@ -63,6 +65,8 @@ class FamilyTree:
             self.members[parent_id].children.append(new_member)
 
         print("Anggota berhasil ditambahkan.")
+
+        log_change("TAMBAH", f"ID={member_id} | Nama={name} | Gender={gender} | Parent ID={parent_id if parent_id else '-'}")
         return True
 
     # =========================
@@ -119,12 +123,17 @@ class FamilyTree:
 
         member = self.members[member_id]
 
+        old_name = member.name
+        old_gender = member.gender
+
         if new_name:
             member.name = new_name
         if new_gender:
             member.gender = new_gender
 
         print("Data anggota berhasil diupdate.")
+
+        log_change("UPDATE", f"ID={member_id} | Nama: {old_name} → {member.name} | Gender: {old_gender} → {member.gender}")
         return True
 
     # =========================
@@ -137,6 +146,8 @@ class FamilyTree:
             return False
 
         member = self.members[member_id]
+
+        deleted_info = f"ID={member.member_id} | Nama={member.name} | Gender={member.gender} | Parent ID={member.parent_id if member.parent_id else '-'}"
 
         # hapus dari parent
         if member.parent_id:
@@ -160,6 +171,7 @@ class FamilyTree:
 
         del self.members[member_id]
         print("Anggota berhasil dihapus.")
+        log_change("HAPUS", deleted_info)
         return True
     
     # =========================
@@ -227,6 +239,18 @@ class FamilyTree:
             else:
                 if member.parent_id in self.members:
                     self.members[member.parent_id].children.append(member)
+
+# =========================
+#  FUNGSI LOG PERUBAHAN DATA
+# =========================
+def log_change(action, detail, filename=LOG_FILE):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry = f"[{timestamp}] [{action}] {detail}\n"
+    try:
+        with open(filename, mode="a", encoding="utf-8") as f:
+            f.write(entry)
+    except Exception as e:
+        print(f"Gagal menulis log: {e}")
 
 
 # =========================
