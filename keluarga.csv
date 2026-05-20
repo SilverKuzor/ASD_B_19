@@ -5,8 +5,8 @@ id,name,gender,father_id,mother_id,spouse_id
 4,Sari,P,,,3
 5,Rina,P,1,2,6
 6,Floyd,L,,,5
-7,Doni,L,1,2,8
-8,Maya,P,,,7
+7,Doni,L,1,2,42
+8,Maya,P,,,
 9,Fajar,L,3,4,10
 10,Lina,P,,,9
 11,Nisa,P,3,4,12
@@ -40,3 +40,4 @@ id,name,gender,father_id,mother_id,spouse_id
 39,Kirk,L,19,20,40
 40,Keisya,P,,,39
 41,opo,P,,,
+42,HelloKittey,P,,,7

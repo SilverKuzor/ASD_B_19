@@ -10,9 +10,34 @@
 # J0403251137 - Muhammad Faqih Husnan
 # =============================
 
+import os
 from models import FamilyTree
 from file_handler import save_to_csv, load_from_csv
 from search_sort import search_member, sort_members
+
+
+# =========================
+# UTILITAS TAMPILAN
+# Fungsi bantu untuk mencetak UI di terminal
+# =========================
+
+def clear():
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+def garis(char="-", lebar=50):
+    print(char * lebar)
+
+
+def judul(teks, lebar=50):
+    print("+" + "-" * (lebar - 2) + "+")
+    print("|" + teks.center(lebar - 2) + "|")
+    print("+" + "-" * (lebar - 2) + "+")
+
+
+def sub_judul(teks):
+    print(f"\n-- {teks} --")
+    garis()
 
 
 # =========================
@@ -23,12 +48,12 @@ def input_nonempty(prompt):
 
     while True:
 
-        data = input(prompt).strip()
+        data = input(f"  {prompt}: ").strip()
 
         if data:
             return data
 
-        print("Input tidak boleh kosong.")
+        print("  [!] Input tidak boleh kosong.")
 
 
 # =========================
@@ -39,12 +64,12 @@ def input_numeric_id(prompt):
 
     while True:
 
-        data = input(prompt).strip()
+        data = input(f"  {prompt}: ").strip()
 
         if data.isdigit():
             return data
 
-        print("ID harus angka.")
+        print("  [!] ID harus angka.")
 
 
 # =========================
@@ -55,12 +80,12 @@ def input_gender(prompt):
 
     while True:
 
-        gender = input(prompt).strip().upper()
+        data = input(f"  {prompt} (L/P): ").strip().upper()
 
-        if gender in ["L", "P"]:
-            return gender
+        if data in ["L", "P"]:
+            return data
 
-        print("Gender harus L/P.")
+        print("  [!] Gender harus L atau P.")
 
 
 # =========================
@@ -72,19 +97,19 @@ def input_parent_id(tree, prompt):
 
     while True:
 
-        data = input(prompt).strip()
+        data = input(
+            f"  {prompt} (kosong jika tidak ada): "
+        ).strip()
 
         if data == "":
             return None
 
         if not data.isdigit():
-
-            print("ID harus angka.")
+            print("  [!] ID harus angka.")
             continue
 
         if data not in tree.members:
-
-            print("ID tidak ditemukan.")
+            print("  [!] ID tidak ditemukan.")
             continue
 
         return data
@@ -99,12 +124,40 @@ def generate_member_id(tree):
     if not tree.members:
         return "1"
 
-    max_id = max(
-        int(member_id)
-        for member_id in tree.members
-    )
+    max_id = max(int(mid) for mid in tree.members)
 
     return str(max_id + 1)
+
+
+# =========================
+# BANNER
+# Tampilkan judul program saat pertama jalan
+# =========================
+def print_banner():
+
+    print()
+    print("+================================================+")
+    print("|                                                |")
+    print("|        PROGRAM SILSILAH KELUARGA               |")
+    print("|              Kelompok 19                       |")
+    print("|                                                |")
+    print("+================================================+")
+    print()
+
+
+# =========================
+# CETAK MENU
+# Cetak daftar item menu dengan format rapi
+# items : list of (nomor, label)
+# =========================
+def cetak_menu(items):
+
+    garis()
+
+    for num, label in items:
+        print(f"  [{num:>2}] {label}")
+
+    garis()
 
 
 # =========================
@@ -115,316 +168,338 @@ def main():
 
     tree = FamilyTree()
 
+    print_banner()
+
     load_from_csv(tree)
 
     while True:
 
-        print("\n===== MENU =====")
-        print("1. Tambah anggota")
-        print("2. Tampilkan semua")
-        print("3. Detail anggota")
-        print("4. Update anggota")
-        print("5. Hapus anggota")
-        print("6. Cari anggota")
-        print("7. Tampilkan tree")
-        print("8. Simpan CSV")
-        print("9. Cek hubungan")
-        print("10. Urutkan anggota")
-        print("0. Keluar")
+        judul("MENU UTAMA")
 
-        choice = input("Pilih menu: ").strip()
+        cetak_menu([
+            ("1",  "Tambah anggota"),
+            ("2",  "Tampilkan semua"),
+            ("3",  "Detail anggota"),
+            ("4",  "Update anggota"),
+            ("5",  "Hapus anggota"),
+            ("6",  "Cari anggota"),
+            ("7",  "Tampilkan silsilah"),
+            ("8",  "Simpan CSV"),
+            ("9",  "Cek hubungan"),
+            ("10", "Urutkan anggota"),
+            ("0",  "Keluar"),
+        ])
 
-        # tambah
+        choice = input("  Pilih menu: ").strip()
+
+        # ── tambah ──
         if choice == "1":
+
+            sub_judul("TAMBAH ANGGOTA")
 
             member_id = generate_member_id(tree)
 
-            print(f"ID otomatis: {member_id}")
+            print(f"  ID otomatis : {member_id}\n")
 
-            name = input_nonempty(
-                "Masukkan nama: "
-            )
+            name      = input_nonempty("Nama")
+            gender    = input_gender("Gender")
+            father_id = input_parent_id(tree, "ID Ayah")
 
-            gender = input_gender(
-                "Masukkan gender (L/P): "
-            )
+            # jika ayah diisi dan ayah punya pasangan,
+            # ibu otomatis dari pasangan ayah — tidak perlu ditanya
+            if father_id and tree.members[father_id].spouse_id:
 
-            father_id = input_parent_id(
-                tree,
-                "ID Ayah (kosong jika tidak ada): "
-            )
+                ibu = tree.members[
+                    tree.members[father_id].spouse_id
+                ]
 
-            mother_id = input_parent_id(
-                tree,
-                "ID Ibu (kosong jika tidak ada): "
-            )
+                mother_id = ibu.member_id
 
-            spouse_id = input_parent_id(
-                tree,
-                "ID Pasangan (kosong jika tidak ada): "
-            )
+                print(
+                    f"  Ibu otomatis : "
+                    f"{ibu.name} (ID {ibu.member_id})"
+                )
+
+            else:
+
+                # ayah tidak ada / ayah jomblo → tanya ibu manual
+                mother_id = input_parent_id(tree, "ID Ibu")
+
+                # jika ibu diisi dan ibu punya pasangan,
+                # ayah otomatis dari pasangan ibu — tidak perlu ditanya
+                if (
+                    mother_id
+                    and not father_id
+                    and tree.members[mother_id].spouse_id
+                ):
+
+                    ayah = tree.members[
+                        tree.members[mother_id].spouse_id
+                    ]
+
+                    father_id = ayah.member_id
+
+                    print(
+                        f"  Ayah otomatis : "
+                        f"{ayah.name} (ID {ayah.member_id})"
+                    )
+
+            spouse_id = input_parent_id(tree, "ID Pasangan")
 
             tree.add_member(
-                member_id,
-                name,
-                gender,
-                father_id,
-                mother_id,
-                spouse_id
+                member_id, name, gender,
+                father_id, mother_id, spouse_id
             )
 
-        # tampil semua
+        # ── tampil semua ──
         elif choice == "2":
+
+            sub_judul("DAFTAR ANGGOTA")
 
             tree.show_all_members()
 
-        # detail
+        # ── detail ──
         elif choice == "3":
 
-            member_id = input_numeric_id(
-                "Masukkan ID anggota: "
-            )
+            sub_judul("DETAIL ANGGOTA")
+
+            member_id = input_numeric_id("ID anggota")
 
             tree.show_member_detail(member_id)
 
-        # update
+        # ── update ──
         elif choice == "4":
 
-            member_id = input_numeric_id(
-                "Masukkan ID anggota: "
-            )
+            sub_judul("UPDATE ANGGOTA")
+
+            member_id = input_numeric_id("ID anggota")
+
+            if member_id not in tree.members:
+                print("  [!] Anggota tidak ditemukan.")
+                continue
+
+            print(f"  Data saat ini: {tree.members[member_id]}\n")
 
             new_name = input(
-                "Nama baru (kosong jika tidak diubah): "
+                "  Nama baru (kosong = tidak diubah): "
             ).strip()
 
             new_gender = ""
 
-            new_spouse_id = input(
-                "ID pasangan baru "
-                "(kosong = tidak diubah, '-' = cerai): "
+            new_spouse_raw = input(
+                "  ID pasangan baru"
+                " (kosong = tidak diubah, '-' = cerai): "
             ).strip()
 
-            if new_name == "":
-                new_name = None
+            new_name   = new_name or None
+            new_gender = new_gender if new_gender in ["L", "P"] else None
 
-            if new_gender == "":
-                new_gender = None
-
-            if new_spouse_id == "":
+            if new_spouse_raw == "":
                 new_spouse_id = None
-
-            elif new_spouse_id == "-":
+            elif new_spouse_raw == "-":
                 new_spouse_id = ""
+            else:
+                new_spouse_id = new_spouse_raw
 
             tree.update_member(
-                member_id,
-                new_name,
-                new_gender,
-                new_spouse_id
+                member_id, new_name, new_gender, new_spouse_id
             )
 
-        # hapus
+        # ── hapus ──
         elif choice == "5":
 
-            member_id = input_numeric_id(
-                "Masukkan ID anggota: "
-            )
+            sub_judul("HAPUS ANGGOTA")
+
+            member_id = input_numeric_id("ID anggota")
+
+            if member_id not in tree.members:
+                print("  [!] Anggota tidak ditemukan.")
+                continue
+
+            m = tree.members[member_id]
+
+            print(f"  Akan menghapus : {m.name} (ID {member_id})")
+
+            konfirm = input(
+                "  Ketik 'ya' untuk konfirmasi: "
+            ).strip().lower()
+
+            if konfirm != "ya":
+                print("  Penghapusan dibatalkan.")
+                continue
 
             tree.delete_member(member_id)
 
-        # cari
+        # ── cari ──
         elif choice == "6":
 
-            keyword = input_nonempty(
-                "Masukkan nama / ID: "
-            )
+            sub_judul("CARI ANGGOTA")
+
+            keyword = input_nonempty("Nama atau ID")
 
             search_member(tree, keyword)
 
-        # tree
+        # ── silsilah ──
         elif choice == "7":
 
             tree.show_family_tree()
 
-        # save
+        # ── simpan ──
         elif choice == "8":
 
             save_to_csv(tree)
 
-        # relasi
+        # ── hubungan ──
         elif choice == "9":
 
             while True:
 
-                print("\n=== MENU CEK HUBUNGAN ===")
-                print("1. Cek hubungan 2 arah")
-                print("2. Cek relasi lengkap")
-                print("0. Kembali")
+                judul("CEK HUBUNGAN")
 
-                sub = input("Pilih menu: ").strip()
+                cetak_menu([
+                    ("1", "Cek hubungan 2 arah"),
+                    ("2", "Cek relasi lengkap"),
+                    ("0", "Kembali"),
+                ])
 
-                # kembali
+                sub = input("  Pilih menu: ").strip()
+
                 if sub == "0":
-
                     break
 
-                # cek hubungan 2 arah:
-                # tampilkan relasi A terhadap B DAN B terhadap A
                 elif sub == "1":
 
-                    id1 = input_numeric_id(
-                        "ID orang pertama: "
-                    )
+                    sub_judul("HUBUNGAN 2 ARAH")
 
-                    id2 = input_numeric_id(
-                        "ID orang kedua: "
-                    )
+                    id1 = input_numeric_id("ID orang pertama")
+                    id2 = input_numeric_id("ID orang kedua")
 
                     if (
                         id1 not in tree.members
                         or id2 not in tree.members
                     ):
-
-                        print("Anggota tidak ditemukan.")
+                        print("  [!] Anggota tidak ditemukan.")
                         continue
 
-                    p1 = tree.members[id1]
-                    p2 = tree.members[id2]
+                    p1  = tree.members[id1]
+                    p2  = tree.members[id2]
+                    r12 = tree.get_relationship_status(id1, id2)
+                    r21 = tree.get_relationship_status(id2, id1)
 
-                    rel_1_to_2 = tree.get_relationship_status(
-                        id1, id2
-                    )
-
-                    rel_2_to_1 = tree.get_relationship_status(
-                        id2, id1
-                    )
-
-                    print("\n=== HASIL HUBUNGAN 2 ARAH ===")
+                    print()
+                    garis()
                     print(
-                        f"{p1.name} terhadap {p2.name} "
-                        f": {rel_1_to_2}"
+                        f"  {p1.name:<20} terhadap"
+                        f" {p2.name:<20} : {r12}"
                     )
                     print(
-                        f"{p2.name} terhadap {p1.name} "
-                        f": {rel_2_to_1}"
+                        f"  {p2.name:<20} terhadap"
+                        f" {p1.name:<20} : {r21}"
                     )
+                    garis()
 
-                # cek relasi lengkap:
-                # tampilkan semua relasi yang dimiliki
-                # seseorang terhadap seluruh anggota lain
                 elif sub == "2":
 
-                    id1 = input_numeric_id(
-                        "ID anggota: "
-                    )
+                    sub_judul("RELASI LENGKAP")
+
+                    id1 = input_numeric_id("ID anggota")
 
                     if id1 not in tree.members:
-
-                        print("Anggota tidak ditemukan.")
+                        print("  [!] Anggota tidak ditemukan.")
                         continue
 
-                    p1 = tree.members[id1]
+                    p1  = tree.members[id1]
+                    ada = False
 
-                    print(
-                        f"\n=== RELASI LENGKAP: "
-                        f"{p1.name} ==="
-                    )
+                    print()
+                    garis()
+                    print(f"  Relasi milik : {p1.name}")
+                    garis()
 
-                    ada_relasi = False
-
-                    for id2, p2 in tree.members.items():
+                    for id2 in tree.members:
 
                         if id2 == id1:
                             continue
 
-                        relations = tree.get_all_relations(
-                            id1, id2
-                        )
+                        rels = tree.get_all_relations(id1, id2)
 
-                        if not relations:
+                        if not rels:
                             continue
 
-                        for label, value in relations.items():
+                        for label, value in rels.items():
+                            print(f"  {label:<25}: {value}")
+                            ada = True
 
-                            print(
-                                f"{label:<25}: {value}"
-                            )
-
-                            ada_relasi = True
-
-                    if not ada_relasi:
-
+                    if not ada:
                         print(
-                            f"{p1.name} tidak memiliki "
-                            f"relasi yang tercatat."
+                            f"  {p1.name} tidak memiliki"
+                            f" relasi yang tercatat."
                         )
 
+                    garis()
+
                 else:
+                    print("  [!] Menu tidak valid.")
 
-                    print("Menu tidak valid.")
-
-        # urutkan
+        # ── urutkan ──
         elif choice == "10":
 
-            print("\n=== MENU URUTKAN ===")
-            print("Pilih kriteria untuk mengurutkan anggota:")
-            print("1. Nama")
-            print("2. ID")
-            print("3. Generasi")
-            print("4. Gender")
-            print("5. Ayah ID")
-            print("6. Ibu ID")
+            judul("URUTKAN ANGGOTA")
 
-            sort_choice = input(
-                "Pilih kriteria: "
-            ).strip()
+            cetak_menu([
+                ("1", "Nama"),
+                ("2", "ID"),
+                ("3", "Generasi"),
+                ("4", "Gender"),
+                ("5", "Ayah ID"),
+                ("6", "Ibu ID"),
+            ])
 
-            sort_by = None
+            sort_choice = input("  Pilih kriteria: ").strip()
 
-            if sort_choice == "1":
-                sort_by = "name"
-            elif sort_choice == "2":
-                sort_by = "id"
-            elif sort_choice == "3":
-                sort_by = "generation"
-            elif sort_choice == "4":
-                sort_by = "gender"
-            elif sort_choice == "5":
-                sort_by = "father_id"
-            elif sort_choice == "6":
-                sort_by = "mother_id"
-            else:
-                print("Kriteria urut tidak valid.")
+            sort_map = {
+                "1": "name",      "2": "id",
+                "3": "generation","4": "gender",
+                "5": "father_id", "6": "mother_id",
+            }
+
+            if sort_choice not in sort_map:
+                print("  [!] Kriteria tidak valid.")
                 continue
 
-            print("\nPilih urutan:")
-            print("1. Naik (A-Z, 0-9)")
-            print("2. Menurun (Z-A, 9-0)")
+            sort_by = sort_map[sort_choice]
 
-            order_choice = input("Pilih urutan: ").strip()
+            print()
+            print("  [1] Naik  (A-Z / 0-9)")
+            print("  [2] Turun (Z-A / 9-0)")
+            print()
 
-            if order_choice == "1":
+            order = input("  Pilih urutan: ").strip()
+
+            if order == "1":
                 reverse = False
-            elif order_choice == "2":
+            elif order == "2":
                 reverse = True
             else:
-                print("Urutan tidak valid.")
+                print("  [!] Urutan tidak valid.")
                 continue
 
             sort_members(tree, by=sort_by, reverse=reverse)
 
-        # keluar
+        # ── keluar ──
         elif choice == "0":
 
             save_to_csv(tree)
-
-            print("Program selesai.")
+            print()
+            garis()
+            print("  Data tersimpan. Program selesai.")
+            garis()
+            print()
             break
 
         else:
 
-            print("Menu tidak valid.")
+            print("  [!] Menu tidak valid.")
 
 
 # =========================
