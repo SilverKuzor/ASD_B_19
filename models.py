@@ -1090,7 +1090,7 @@ class FamilyTree:
             if c.member_id == id2:
                 return "Sepupu"
 
-        return "Tidak Ada Relasi"
+        return "Tidak Ada Relasi / Saudara Jauh"
 
     # =========================
     # GET ALL DATA
