@@ -198,9 +198,7 @@ def main():
                 "Nama baru (kosong jika tidak diubah): "
             ).strip()
 
-            new_gender = input(
-                "Gender baru L/P (kosong jika tidak diubah): "
-            ).strip().upper()
+            new_gender = ""
 
             new_spouse_id = input(
                 "ID pasangan baru "
