@@ -304,8 +304,32 @@ class FamilyTree:
         # root
         if not father_id and not mother_id:
 
-            if member_id not in self.root_ids:
-                self.root_ids.append(member_id)
+            # cek apakah pasangan sudah punya orang tua (sudah masuk keluarga lain)
+            # jika iya, member ini tidak perlu jadi root terpisah —
+            # cukup tampil sebagai pasangan di pohon keluarga pasangannya
+            spouse_has_parents = (
+                spouse_id
+                and spouse_id in self.members
+                and (
+                    self.members[spouse_id].father_id
+                    or self.members[spouse_id].mother_id
+                )
+            )
+
+            if not spouse_has_parents:
+
+                if member_id not in self.root_ids:
+                    self.root_ids.append(member_id)
+
+                # jika pasangan juga root (tidak punya ortu),
+                # gabungkan jadi satu root, sisakan ID terkecil
+                if spouse_id and spouse_id in self.root_ids:
+
+                    keep   = min(member_id, spouse_id)
+                    remove = max(member_id, spouse_id)
+
+                    if remove in self.root_ids:
+                        self.root_ids.remove(remove)
 
         # hubungan anak
         if father_id:
@@ -419,7 +443,9 @@ class FamilyTree:
 
     # =========================
     # TAMPILKAN TREE
-    # Menampilkan pohon keluarga secara visual dari root ke bawah
+    # Menampilkan pohon keluarga secara visual dari root ke bawah.
+    # Jika dua root adalah pasangan, tampilkan cukup dari satu sisi.
+    # Jika cerai, tampilkan sebagai dua pohon terpisah.
     # =========================
     def show_family_tree(self):
 
@@ -434,23 +460,52 @@ class FamilyTree:
         print("||                            ||")
         print("================================\n")
 
-        visited = set()
+        # root yang sudah dilewati (untuk skip pasangan nikah)
+        skipped = set()
 
-        for i, root_id in enumerate(self.root_ids):
+        # filter: root mana saja yang benar-benar akan ditampilkan
+        visible_roots = []
 
-            if root_id in visited:
+        for root_id in self.root_ids:
+
+            if root_id in skipped:
                 continue
 
             root = self.members[root_id]
 
-            self._print_tree(
-                root,
-                "",
-                i == len(self.root_ids) - 1,
-                visited
-            )
+            # jika pasangan root ini juga ada di root_ids
+            # (artinya mereka menikah), tampilkan hanya dari sisi
+            # ID terkecil dan skip pasangannya
+            if (
+                root.spouse_id
+                and root.spouse_id in self.root_ids
+            ):
 
-    # Rekursif cetak satu node pohon beserta cabang-cabangnya
+                keep   = min(root_id, root.spouse_id)
+                skip   = max(root_id, root.spouse_id)
+
+                skipped.add(skip)
+
+                if root_id == keep:
+                    visible_roots.append(root_id)
+
+            else:
+
+                visible_roots.append(root_id)
+
+        for i, root_id in enumerate(visible_roots):
+
+            root = self.members[root_id]
+
+            is_last = (i == len(visible_roots) - 1)
+
+            # visited dibuat BARU per pohon agar anak bisa muncul
+            # di pohon ibu maupun ayah setelah cerai
+            self._print_tree(root, "", is_last, set())
+
+    # Rekursif cetak satu node pohon beserta cabang-cabangnya.
+    # Anak hanya dicetak di bawah ayah jika ayah masih ada,
+    # sehingga tidak dobel saat pohon ibu juga di-render.
     def _print_tree(
         self,
         member,
@@ -510,10 +565,27 @@ class FamilyTree:
 
         for child in member.children:
 
-            if child.member_id not in already:
+            if child.member_id in already:
+                continue
 
-                unique_children.append(child)
-                already.add(child.member_id)
+            already.add(child.member_id)
+
+            # Jika anak masih punya ayah yang ada di tree,
+            # dan kita sedang mencetak dari sisi ibu,
+            # DAN ayah masih berpasangan dengan ibu ini
+            # (satu keluarga utuh) → lewati, cetak di bawah ayah saja.
+            # Jika sudah cerai (ayah tidak lagi berpasangan dengan ibu),
+            # tetap cetak di pohon ibu juga.
+            if (
+                child.father_id
+                and child.father_id in self.members
+                and member.gender == "P"
+            ):
+                father = self.members[child.father_id]
+                if father.spouse_id == member.member_id:
+                    continue
+
+            unique_children.append(child)
 
         for i, child in enumerate(unique_children):
 
@@ -585,6 +657,22 @@ class FamilyTree:
                     old_spouse.spouse_id = None
                     member.spouse_id = None
 
+                    # setelah cerai, pastikan keduanya yang tidak
+                    # punya orang tua terdaftar sebagai root masing-masing
+                    if (
+                        not member.father_id
+                        and not member.mother_id
+                        and member_id not in self.root_ids
+                    ):
+                        self.root_ids.append(member_id)
+
+                    if (
+                        not old_spouse.father_id
+                        and not old_spouse.mother_id
+                        and old_spouse.member_id not in self.root_ids
+                    ):
+                        self.root_ids.append(old_spouse.member_id)
+
                     print("Berhasil cerai.")
 
             else:
@@ -638,7 +726,9 @@ class FamilyTree:
 
     # =========================
     # HAPUS
-    # Menghapus anggota dari pohon dan memperbaiki semua relasi terkait
+    # Menghapus anggota dari pohon dan memperbaiki semua relasi terkait.
+    # Jika yang dihapus adalah root dan punya pasangan (juga root),
+    # pasangan tetap muncul sebagai root sendiri.
     # =========================
     def delete_member(self, member_id):
 
@@ -651,13 +741,44 @@ class FamilyTree:
 
         member = self.members[member_id]
 
-        # hapus pasangan
+        # putus relasi pasangan — pasangan tetap ada di tree
         if member.spouse_id:
 
             spouse = self.members[member.spouse_id]
             spouse.spouse_id = None
 
-        # hapus hubungan anak
+            # jika yang dihapus adalah root, pastikan pasangan
+            # naik menjadi root (menggantikan posisi di root_ids)
+            if member_id in self.root_ids:
+
+                idx = self.root_ids.index(member_id)
+
+                if spouse.member_id not in self.root_ids:
+
+                    # taruh pasangan di posisi root yang sama
+                    self.root_ids[idx] = spouse.member_id
+
+                else:
+
+                    # pasangan sudah di root_ids, hapus slot lama saja
+                    self.root_ids.pop(idx)
+
+            # jika yang dihapus bukan root, tapi pasangan tidak punya
+            # orang tua sendiri dan belum masuk root_ids → angkat jadi root
+            elif (
+                not spouse.father_id
+                and not spouse.mother_id
+                and spouse.member_id not in self.root_ids
+            ):
+
+                self.root_ids.append(spouse.member_id)
+
+        elif member_id in self.root_ids:
+
+            # tidak punya pasangan, hapus langsung dari root_ids
+            self.root_ids.remove(member_id)
+
+        # perbaiki relasi orang tua pada anak-anak member yang dihapus
         for child in member.children:
 
             if child.father_id == member_id:
@@ -666,6 +787,7 @@ class FamilyTree:
             if child.mother_id == member_id:
                 child.mother_id = None
 
+            # anak tanpa orang tua manapun → angkat jadi root
             if (
                 not child.father_id
                 and not child.mother_id
@@ -674,7 +796,7 @@ class FamilyTree:
                 if child.member_id not in self.root_ids:
                     self.root_ids.append(child.member_id)
 
-        # hapus dari ayah
+        # cabut member dari daftar anak ayahnya
         if member.father_id:
 
             father = self.members[member.father_id]
@@ -685,7 +807,7 @@ class FamilyTree:
                 if child.member_id != member_id
             ]
 
-        # hapus dari ibu
+        # cabut member dari daftar anak ibunya
         if member.mother_id:
 
             mother = self.members[member.mother_id]
@@ -695,10 +817,6 @@ class FamilyTree:
                 for child in mother.children
                 if child.member_id != member_id
             ]
-
-        # hapus root
-        if member_id in self.root_ids:
-            self.root_ids.remove(member_id)
 
         del self.members[member_id]
 
@@ -913,38 +1031,6 @@ class FamilyTree:
 
         for member in self.members.values():
 
-            # tentukan root (anggota tanpa orang tua)
-            if (
-                not member.father_id
-                and not member.mother_id
-            ):
-
-                if member.member_id in visited_roots:
-                    continue
-
-                # jika punya pasangan, pilih ID terkecil sebagai root
-                if member.spouse_id:
-
-                    spouse_id = member.spouse_id
-
-                    root_id = min(
-                        member.member_id,
-                        spouse_id
-                    )
-
-                    if root_id not in self.root_ids:
-                        self.root_ids.append(root_id)
-
-                    visited_roots.add(member.member_id)
-                    visited_roots.add(spouse_id)
-
-                else:
-
-                    if member.member_id not in self.root_ids:
-                        self.root_ids.append(member.member_id)
-
-                    visited_roots.add(member.member_id)
-
             # hubungkan anak ke orang tua masing-masing
             if member.father_id:
 
@@ -957,6 +1043,41 @@ class FamilyTree:
                 self.members[
                     member.mother_id
                 ].children.append(member)
+
+        # tentukan root setelah semua relasi terhubung
+        for member in self.members.values():
+
+            if member.father_id or member.mother_id:
+                continue
+
+            if member.member_id in visited_roots:
+                continue
+
+            # jika pasangan punya orang tua, member ini masuk
+            # ke pohon keluarga pasangan → bukan root terpisah
+            if member.spouse_id:
+
+                spouse = self.members.get(member.spouse_id)
+
+                if spouse and (spouse.father_id or spouse.mother_id):
+                    visited_roots.add(member.member_id)
+                    continue
+
+                # kedua-duanya tidak punya ortu → root bersama (ID terkecil)
+                root_id = min(member.member_id, member.spouse_id)
+
+                if root_id not in self.root_ids:
+                    self.root_ids.append(root_id)
+
+                visited_roots.add(member.member_id)
+                visited_roots.add(member.spouse_id)
+
+            else:
+
+                if member.member_id not in self.root_ids:
+                    self.root_ids.append(member.member_id)
+
+                visited_roots.add(member.member_id)
 
 
 # =========================
