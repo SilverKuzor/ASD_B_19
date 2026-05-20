@@ -1,6 +1,3 @@
-id,name,gender,parent_id
-001,ayam,L,
-002,fakih,L,001
-003,husnaen,L,001
-004,ika,P,002
-005,bunga,P,002
+id,name,gender,father_id,mother_id,spouse_id
+1,Wahyu,L,,,2
+2,Ulis,P,,,1

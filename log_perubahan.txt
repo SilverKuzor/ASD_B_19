@@ -1,1 +1,13 @@
 [2026-05-19 22:42:45] [TAMBAH] ID=006 | Nama=Leo | Gender=P | Parent ID=-
+[2026-05-20 08:42:51] [TAMBAH] ID=1 | Nama=hai | Gender=L | Ayah=- | Ibu=- | Pasangan=-
+[2026-05-20 08:49:31] [TAMBAH] ID=1 | Nama=Tes | Gender=L | Ayah=- | Ibu=- | Pasangan=-
+[2026-05-20 08:49:49] [TAMBAH] ID=2 | Nama=Tos | Gender=P | Ayah=- | Ibu=- | Pasangan=1
+[2026-05-20 08:52:39] [TAMBAH] ID=1 | Nama=wo | Gender=L | Ayah=- | Ibu=- | Pasangan=-
+[2026-05-20 09:30:28] [TAMBAH] ID=2 | Nama=Lisa | Gender=P | Ayah=- | Ibu=- | Pasangan=1
+[2026-05-20 09:32:32] [TAMBAH] ID=2 | Nama=Ulis | Gender=P | Ayah=- | Ibu=- | Pasangan=1
+[2026-05-20 09:34:22] [TAMBAH] ID=3 | Nama=Rika | Gender=P | Ayah=1 | Ibu=2 | Pasangan=-
+[2026-05-20 09:34:36] [TAMBAH] ID=4 | Nama=Oioi | Gender=L | Ayah=1 | Ibu=3 | Pasangan=-
+[2026-05-20 09:38:17] [TAMBAH] ID=3 | Nama=Rika | Gender=P | Ayah=1 | Ibu=2 | Pasangan=-
+[2026-05-20 09:40:59] [TAMBAH] ID=3 | Nama=Rika | Gender=P | Ayah=1 | Ibu=2 | Pasangan=-
+[2026-05-20 09:51:42] [TAMBAH] ID=3 | Nama=Rika | Gender=P
+[2026-05-20 09:51:56] [TAMBAH] ID=4 | Nama=Kuzor | Gender=L
