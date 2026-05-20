@@ -908,8 +908,118 @@ class FamilyTree:
         return cousins
 
     # =========================
-    # RELASI
-    # Menentukan jenis relasi antara dua anggota keluarga
+    # RELASI LENGKAP
+    # Mengembalikan dict berisi semua relasi yang dimiliki id1 terhadap id2.
+    # Key yang tidak relevan tidak disertakan (kosong = tidak ditampilkan).
+    # =========================
+    def get_all_relations(self, id1, id2):
+
+        id1 = str(id1)
+        id2 = str(id2)
+
+        result = {}
+
+        if id1 not in self.members or id2 not in self.members:
+            return None
+
+        p1 = self.members[id1]
+        p2 = self.members[id2]
+
+        # --- pasangan ---
+        if p1.spouse_id == id2:
+            label = "Suami" if p2.gender == "L" else "Istri"
+            result["Pasangan"] = f"{p2.name} ({label})"
+
+        # --- orang tua p1 ---
+        if p1.father_id == id2:
+            result["Ayah"] = p2.name
+
+        if p1.mother_id == id2:
+            result["Ibu"] = p2.name
+
+        # --- anak p1 ---
+        children_p1 = [
+            c for c in p1.children
+            if c.member_id == id2
+        ]
+        if children_p1:
+            label = "Anak Laki-laki" if p2.gender == "L" else "Anak Perempuan"
+            result["Anak"] = f"{p2.name} ({label})"
+
+        # --- kakek/nenek dari jalur ayah ---
+        if p1.father_id and p1.father_id in self.members:
+            ayah = self.members[p1.father_id]
+            if ayah.father_id == id2:
+                result["Kakek (dari Ayah)"] = p2.name
+            if ayah.mother_id == id2:
+                result["Nenek (dari Ayah)"] = p2.name
+
+        # --- kakek/nenek dari jalur ibu ---
+        if p1.mother_id and p1.mother_id in self.members:
+            ibu = self.members[p1.mother_id]
+            if ibu.father_id == id2:
+                result["Kakek (dari Ibu)"] = p2.name
+            if ibu.mother_id == id2:
+                result["Nenek (dari Ibu)"] = p2.name
+
+        # --- cucu ---
+        # p2 adalah anak dari anak p1
+        for child in p1.children:
+            for grandchild in child.children:
+                if grandchild.member_id == id2:
+                    label = "Cucu Laki-laki" if p2.gender == "L" else "Cucu Perempuan"
+                    result["Cucu"] = f"{p2.name} ({label})"
+                    break
+
+        # --- saudara kandung vs saudara tiri ---
+        siblings = self.get_siblings(id1)
+        for sib in siblings:
+            if sib.member_id == id2:
+                # kandung = sama ayah DAN sama ibu
+                same_father = p1.father_id and p1.father_id == p2.father_id
+                same_mother = p1.mother_id and p1.mother_id == p2.mother_id
+                if same_father and same_mother:
+                    label = "Saudara Laki-laki" if p2.gender == "L" else "Saudara Perempuan"
+                    result["Saudara Kandung"] = f"{p2.name} ({label})"
+                else:
+                    label = "Saudara Laki-laki" if p2.gender == "L" else "Saudara Perempuan"
+                    result["Saudara Tiri"] = f"{p2.name} ({label})"
+                break
+
+        # --- paman / bibi ---
+        # id2 adalah saudara dari orang tua id1
+        uas = self.get_uncles_aunts(id1)
+        for ua in uas:
+            if ua.member_id == id2:
+                if p2.gender == "L":
+                    result["Paman"] = p2.name
+                else:
+                    result["Bibi"] = p2.name
+                break
+
+        # --- keponakan ---
+        # id2 adalah anak dari saudara id1
+        siblings_p1 = self.get_siblings(id1)
+        for sib in siblings_p1:
+            for nephew in sib.children:
+                if nephew.member_id == id2:
+                    label = "Laki-laki" if p2.gender == "L" else "Perempuan"
+                    result["Keponakan"] = f"{p2.name} ({label})"
+                    break
+
+        # --- sepupu ---
+        cousins = self.get_cousins(id1)
+        for c in cousins:
+            if c.member_id == id2:
+                result["Sepupu"] = p2.name
+                break
+
+        return result
+
+    # =========================
+    # RELASI SEDERHANA (2 ARAH)
+    # Mengembalikan string relasi ringkas id1 terhadap id2,
+    # dipakai untuk cek cepat dua arah sekaligus
     # =========================
     def get_relationship_status(self, id1, id2):
 
@@ -923,51 +1033,64 @@ class FamilyTree:
 
             return "Anggota tidak ditemukan"
 
-        person1 = self.members[id1]
-        person2 = self.members[id2]
+        p1 = self.members[id1]
+        p2 = self.members[id2]
 
-        # pasangan
-        if person1.spouse_id == id2:
-            return "SUAMI ISTRI"
+        if p1.spouse_id == id2:
+            return "Suami" if p2.gender == "L" else "Istri"
 
-        # ayah
-        if person2.father_id == id1:
-            return "AYAH ANAK"
+        if p1.father_id == id2:
+            return "Ayah"
 
-        if person1.father_id == id2:
-            return "ANAK AYAH"
+        if p1.mother_id == id2:
+            return "Ibu"
 
-        # ibu
-        if person2.mother_id == id1:
-            return "IBU ANAK"
+        for c in p1.children:
+            if c.member_id == id2:
+                return "Anak Laki-laki" if p2.gender == "L" else "Anak Perempuan"
 
-        if person1.mother_id == id2:
-            return "ANAK IBU"
+        if p1.father_id and p1.father_id in self.members:
+            ayah = self.members[p1.father_id]
+            if ayah.father_id == id2:
+                return "Kakek (dari Ayah)"
+            if ayah.mother_id == id2:
+                return "Nenek (dari Ayah)"
 
-        # saudara
-        for sibling in self.get_siblings(id1):
+        if p1.mother_id and p1.mother_id in self.members:
+            ibu = self.members[p1.mother_id]
+            if ibu.father_id == id2:
+                return "Kakek (dari Ibu)"
+            if ibu.mother_id == id2:
+                return "Nenek (dari Ibu)"
 
-            if sibling.member_id == id2:
-                return "SAUDARA"
+        for child in p1.children:
+            for grandchild in child.children:
+                if grandchild.member_id == id2:
+                    return "Cucu Laki-laki" if p2.gender == "L" else "Cucu Perempuan"
 
-        # paman/bibi
-        for ua in self.get_uncles_aunts(id2):
+        for sib in self.get_siblings(id1):
+            if sib.member_id == id2:
+                same_father = p1.father_id and p1.father_id == p2.father_id
+                same_mother = p1.mother_id and p1.mother_id == p2.mother_id
+                label = "Laki-laki" if p2.gender == "L" else "Perempuan"
+                if same_father and same_mother:
+                    return f"Saudara Kandung ({label})"
+                return f"Saudara Tiri ({label})"
 
-            if ua.member_id == id1:
+        for ua in self.get_uncles_aunts(id1):
+            if ua.member_id == id2:
+                return "Paman" if p2.gender == "L" else "Bibi"
 
-                return (
-                    "PAMAN"
-                    if person1.gender == "L"
-                    else "BIBI"
-                )
+        for sib in self.get_siblings(id1):
+            for nephew in sib.children:
+                if nephew.member_id == id2:
+                    return "Keponakan Laki-laki" if p2.gender == "L" else "Keponakan Perempuan"
 
-        # sepupu
-        for cousin in self.get_cousins(id1):
+        for c in self.get_cousins(id1):
+            if c.member_id == id2:
+                return "Sepupu"
 
-            if cousin.member_id == id2:
-                return "SEPUPU"
-
-        return "TIDAK ADA RELASI"
+        return "Tidak Ada Relasi"
 
     # =========================
     # GET ALL DATA
