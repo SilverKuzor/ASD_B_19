@@ -1,4 +1,5 @@
 import csv
+from enum import member
 import os
 from datetime import datetime
 from collections import deque
@@ -15,6 +16,7 @@ from collections import deque
 # =============================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 CSV_FILE = os.path.join(BASE_DIR, "keluarga.csv")
 LOG_FILE = os.path.join(BASE_DIR, "log_perubahan.txt")
 
@@ -35,12 +37,11 @@ class FamilyMember:
     ):
 
         self.member_id = str(member_id)
-        self.name = name
-        self.gender = gender
+        self.name = name.strip()
+        self.gender = gender.upper()
 
         self.father_id = str(father_id) if father_id else None
         self.mother_id = str(mother_id) if mother_id else None
-
         self.spouse_id = str(spouse_id) if spouse_id else None
 
         self.children = []
@@ -51,24 +52,20 @@ class FamilyMember:
             "id": self.member_id,
             "name": self.name,
             "gender": self.gender,
-            "father_id": self.father_id if self.father_id else "",
-            "mother_id": self.mother_id if self.mother_id else "",
-            "spouse_id": self.spouse_id if self.spouse_id else ""
+            "father_id": self.father_id or "",
+            "mother_id": self.mother_id or "",
+            "spouse_id": self.spouse_id or ""
         }
 
     def __str__(self):
-
-        father_text = self.father_id if self.father_id else "-"
-        mother_text = self.mother_id if self.mother_id else "-"
-        spouse_text = self.spouse_id if self.spouse_id else "-"
 
         return (
             f"ID: {self.member_id} | "
             f"Nama: {self.name} | "
             f"Gender: {self.gender} | "
-            f"Ayah ID: {father_text} | "
-            f"Ibu ID: {mother_text} | "
-            f"Pasangan ID: {spouse_text}"
+            f"Ayah ID: {self.father_id or '-'} | "
+            f"Ibu ID: {self.mother_id or '-'} | "
+            f"Pasangan ID: {self.spouse_id or '-'}"
         )
 
 
@@ -93,30 +90,31 @@ class FamilyTree:
         if ancestor_id not in self.members:
             return False
 
-        queue = deque([self.members[ancestor_id]])
-
+        queue = deque([ancestor_id])
         visited = set()
 
         while queue:
 
-            current = queue.popleft()
+            current_id = queue.popleft()
 
-            if current.member_id in visited:
+            if current_id in visited:
                 continue
 
-            visited.add(current.member_id)
+            visited.add(current_id)
+
+            current = self.members[current_id]
 
             for child in current.children:
 
                 if child.member_id == descendant_id:
                     return True
 
-                queue.append(child)
+                queue.append(child.member_id)
 
         return False
 
     # =========================
-    # VALIDASI INCEST
+    # CEK INCEST
     # =========================
     def is_incest(self, member_id, spouse_id):
 
@@ -126,31 +124,30 @@ class FamilyTree:
         if member_id == spouse_id:
             return True
 
-        if member_id not in self.members:
-            return False
-
-        if spouse_id not in self.members:
+        if (
+            member_id not in self.members
+            or spouse_id not in self.members
+        ):
             return False
 
         member = self.members[member_id]
         spouse = self.members[spouse_id]
 
-        # orang tua kandung
-        if (
-            spouse_id == member.father_id
-            or spouse_id == member.mother_id
-        ):
+        # orang tua / anak
+        if spouse_id in [member.father_id, member.mother_id]:
             return True
 
-        # anak kandung
+        if member_id in [spouse.father_id, spouse.mother_id]:
+            return True
+
+        # keturunan
         if self.is_descendant(member_id, spouse_id):
             return True
 
-        # sebaliknya
         if self.is_descendant(spouse_id, member_id):
             return True
 
-        # saudara kandung
+        # saudara
         same_father = (
             member.father_id
             and member.father_id == spouse.father_id
@@ -164,10 +161,32 @@ class FamilyTree:
         if same_father or same_mother:
             return True
 
+        # paman / bibi
+        for person in self.get_uncles_aunts(member_id):
+
+            if person.member_id == spouse_id:
+                return True
+
+        for person in self.get_uncles_aunts(spouse_id):
+
+            if person.member_id == member_id:
+                return True
+
+        # sepupu
+        for person in self.get_cousins(member_id):
+
+            if person.member_id == spouse_id:
+                return True
+
+        for person in self.get_cousins(spouse_id):
+
+            if person.member_id == member_id:
+                return True
+
         return False
 
     # =========================
-    # CREATE
+    # TAMBAH MEMBER
     # =========================
     def add_member(
         self,
@@ -185,25 +204,21 @@ class FamilyTree:
         mother_id = str(mother_id) if mother_id else None
         spouse_id = str(spouse_id) if spouse_id else None
 
-        # =========================
-        # VALIDASI ID
-        # =========================
+        # validasi ID
         if member_id in self.members:
 
-            print("Gagal: ID sudah dipakai.")
+            print("Gagal: ID sudah digunakan.")
             return False
 
-        # =========================
-        # VALIDASI GENDER
-        # =========================
+        # validasi gender
+        gender = gender.upper()
+
         if gender not in ["L", "P"]:
 
             print("Gagal: Gender harus L atau P.")
             return False
 
-        # =========================
-        # VALIDASI AYAH
-        # =========================
+        # validasi ayah
         if father_id:
 
             if father_id not in self.members:
@@ -216,9 +231,7 @@ class FamilyTree:
                 print("Gagal: Ayah harus gender L.")
                 return False
 
-        # =========================
-        # VALIDASI IBU
-        # =========================
+        # validasi ibu
         if mother_id:
 
             if mother_id not in self.members:
@@ -231,9 +244,7 @@ class FamilyTree:
                 print("Gagal: Ibu harus gender P.")
                 return False
 
-        # =========================
-        # AUTO ISI ORTU
-        # =========================
+        # auto isi pasangan ortu
         if father_id and not mother_id:
 
             father = self.members[father_id]
@@ -248,19 +259,7 @@ class FamilyTree:
             if mother.spouse_id:
                 father_id = mother.spouse_id
 
-        # =========================
-        # VALIDASI ORTU
-        # =========================
-        if father_id and mother_id:
-
-            if father_id == mother_id:
-
-                print("Gagal: Ayah dan ibu tidak boleh sama.")
-                return False
-
-        # =========================
-        # VALIDASI PASANGAN
-        # =========================
+        # validasi pasangan
         if spouse_id:
 
             if spouse_id not in self.members:
@@ -270,30 +269,22 @@ class FamilyTree:
 
             spouse = self.members[spouse_id]
 
-            if spouse_id == member_id:
-
-                print("Gagal: Tidak bisa menikah dengan diri sendiri.")
-                return False
-
             if spouse.gender == gender:
 
-                print("Gagal: Pasangan tidak boleh gender sama.")
+                print("Gagal: Pasangan tidak boleh sesama gender.")
                 return False
 
-            if spouse.spouse_id is not None:
+            if spouse.spouse_id:
 
-                print("Gagal: Orang tersebut sudah memiliki pasangan.")
+                print("Gagal: Pasangan sudah menikah.")
                 return False
 
-            # validasi incest
-            if self.is_incest(spouse_id, member_id):
+            if self.is_incest(member_id, spouse_id):
 
-                print("Gagal: Tidak boleh incest dalam keluarga.")
+                print("Gagal: Tidak boleh incest.")
                 return False
 
-        # =========================
-        # BUAT MEMBER
-        # =========================
+        # buat member
         new_member = FamilyMember(
             member_id,
             name,
@@ -305,43 +296,35 @@ class FamilyTree:
 
         self.members[member_id] = new_member
 
-        # =========================
-        # HUBUNGKAN PASANGAN
-        # =========================
+        # hubungkan pasangan
         if spouse_id:
 
             self.members[spouse_id].spouse_id = member_id
 
-        # =========================
-        # ROOT
-        # =========================
+        # root
         if not father_id and not mother_id:
 
-            self.root_ids.append(member_id)
+            if member_id not in self.root_ids:
+                self.root_ids.append(member_id)
 
-        # =========================
-        # HUBUNGKAN KE AYAH
-        # =========================
+        # hubungan anak
         if father_id:
 
-            self.members[father_id].children.append(new_member)
+            self.members[father_id].children.append(
+                new_member
+            )
 
-        # =========================
-        # HUBUNGKAN KE IBU
-        # =========================
         if mother_id:
 
-            self.members[mother_id].children.append(new_member)
+            self.members[mother_id].children.append(
+                new_member
+            )
 
         print("Anggota berhasil ditambahkan.")
 
         log_change(
             "TAMBAH",
-            (
-                f"ID={member_id} | "
-                f"Nama={name} | "
-                f"Gender={gender}"
-            )
+            f"ID={member_id} | Nama={name}"
         )
 
         return True
@@ -357,7 +340,6 @@ class FamilyTree:
             return None
 
         level = 1
-
         current = self.members[member_id]
 
         while current.father_id:
@@ -368,13 +350,13 @@ class FamilyTree:
         return level
 
     # =========================
-    # SHOW ALL
+    # TAMPILKAN SEMUA
     # =========================
     def show_all_members(self):
 
         if not self.members:
 
-            print("Data keluarga kosong.")
+            print("Data kosong.")
             return
 
         print("\n=== DAFTAR ANGGOTA ===")
@@ -399,39 +381,40 @@ class FamilyTree:
         print("\n=== DETAIL ANGGOTA ===")
         print(member)
 
-        generation = self.get_generation(member_id)
-
-        print(f"Generasi ke-{generation}")
+        print(
+            f"Generasi ke-{self.get_generation(member_id)}"
+        )
 
         if member.spouse_id:
 
             spouse = self.members[member.spouse_id]
 
-            print(f"Pasangan: {spouse.name}")
+            print(f"Pasangan : {spouse.name}")
+
+        else:
+
+            print("Pasangan : -")
 
         if member.children:
 
             print("Anak:")
 
-            unique_children = []
-            already = set()
+            printed = set()
 
             for child in member.children:
 
-                if child.member_id not in already:
+                if child.member_id not in printed:
 
-                    unique_children.append(child)
-                    already.add(child.member_id)
+                    print(f"- {child.name}")
 
-            for child in unique_children:
-                print(f"- {child.name}")
+                    printed.add(child.member_id)
 
         else:
 
-            print("Anak: Tidak ada")
+            print("Anak : -")
 
     # =========================
-    # TREE
+    # TAMPILKAN TREE
     # =========================
     def show_family_tree(self):
 
@@ -439,41 +422,31 @@ class FamilyTree:
 
             print("Data keluarga kosong.")
             return
+        
 
-        print("\n")
-        print("╔══════════════════════════════════════╗")
-        print("║         SILSILAH KELUARGA           ║")
-        print("╚══════════════════════════════════════╝")
-        print()
+        print("================================")
+        print("||                            ||")
+        print("||     SILSILAH KELUARGA      ||")
+        print("||                            ||")
+        print("================================\n")
 
         visited = set()
-        printed_roots = set()
 
         for i, root_id in enumerate(self.root_ids):
 
-            if root_id in printed_roots:
+            if root_id in visited:
                 continue
 
             root = self.members[root_id]
 
-            printed_roots.add(root_id)
-
-            if root.spouse_id:
-                printed_roots.add(root.spouse_id)
-
-            is_last = (i == len(self.root_ids) - 1)
-
-            self._print_tree_ui(
+            self._print_tree(
                 root,
                 "",
-                is_last,
+                i == len(self.root_ids) - 1,
                 visited
             )
 
-    # =========================
-    # PRINT TREE
-    # =========================
-    def _print_tree_ui(
+    def _print_tree(
         self,
         member,
         prefix="",
@@ -503,7 +476,7 @@ class FamilyTree:
 
             spouse = self.members[member.spouse_id]
 
-            spouse_gender = (
+            spouse_icon = (
                 "♂"
                 if spouse.gender == "L"
                 else "♀"
@@ -511,25 +484,21 @@ class FamilyTree:
 
             spouse_text = (
                 f" ══ ♥ ══ "
-                f"{spouse.name} {spouse_gender}"
+                f"{spouse.name} {spouse_icon}"
             )
-
-        generation = self.get_generation(member.member_id)
 
         print(
             prefix +
             connector +
-            f"[{member.name} {gender_icon}]"
-            +
+            f"{member.name} {gender_icon}" +
             spouse_text
-            +
-            f"  (Gen {generation})"
         )
 
-        if is_last:
-            new_prefix = prefix + "    "
-        else:
-            new_prefix = prefix + "│   "
+        new_prefix = (
+            prefix + "    "
+            if is_last
+            else prefix + "│   "
+        )
 
         unique_children = []
         already = set()
@@ -541,16 +510,12 @@ class FamilyTree:
                 unique_children.append(child)
                 already.add(child.member_id)
 
-        for index, child in enumerate(unique_children):
+        for i, child in enumerate(unique_children):
 
-            child_is_last = (
-                index == len(unique_children) - 1
-            )
-
-            self._print_tree_ui(
+            self._print_tree(
                 child,
                 new_prefix,
-                child_is_last,
+                i == len(unique_children) - 1,
                 visited
             )
 
@@ -561,26 +526,31 @@ class FamilyTree:
         self,
         member_id,
         new_name=None,
-        new_gender=None
+        new_gender=None,
+        new_spouse_id=None
     ):
 
         member_id = str(member_id)
 
         if member_id not in self.members:
 
-            print("Gagal: anggota tidak ditemukan.")
+            print("Anggota tidak ditemukan.")
             return False
 
         member = self.members[member_id]
 
-        old_name = member.name
-        old_gender = member.gender
+        # update nama
+        if new_name:
+            member.name = new_name
 
+        # update gender
         if new_gender:
+
+            new_gender = new_gender.upper()
 
             if new_gender not in ["L", "P"]:
 
-                print("Gagal: Gender harus L atau P.")
+                print("Gender harus L/P.")
                 return False
 
             if member.spouse_id:
@@ -589,32 +559,79 @@ class FamilyTree:
 
                 if spouse.gender == new_gender:
 
-                    print(
-                        "Gagal: pasangan sesama gender."
-                    )
-
+                    print("Gagal: pasangan sesama gender.")
                     return False
 
-        if new_name:
-            member.name = new_name
-
-        if new_gender:
             member.gender = new_gender
 
-        print("Data anggota berhasil diupdate.")
+        # update pasangan
+        if new_spouse_id is not None:
+
+            # cerai
+            if new_spouse_id == "":
+
+                if member.spouse_id:
+
+                    old_spouse = self.members[
+                        member.spouse_id
+                    ]
+
+                    old_spouse.spouse_id = None
+                    member.spouse_id = None
+
+                    print("Berhasil cerai.")
+
+            else:
+
+                new_spouse_id = str(new_spouse_id)
+
+                if new_spouse_id not in self.members:
+
+                    print("Pasangan tidak ditemukan.")
+                    return False
+
+                spouse = self.members[new_spouse_id]
+
+                if spouse.gender == member.gender:
+
+                    print("Pasangan sesama gender.")
+                    return False
+
+                if spouse.spouse_id:
+
+                    print("Pasangan sudah menikah.")
+                    return False
+
+                if self.is_incest(
+                    member_id,
+                    new_spouse_id
+                ):
+
+                    print("Tidak boleh incest.")
+                    return False
+
+                # lepas pasangan lama
+                if member.spouse_id:
+
+                    old = self.members[member.spouse_id]
+                    old.spouse_id = None
+
+                member.spouse_id = new_spouse_id
+                spouse.spouse_id = member_id
+
+                print("Pasangan berhasil diupdate.")
+
+        print("Data berhasil diupdate.")
 
         log_change(
             "UPDATE",
-            (
-                f"ID={member_id} | "
-                f"Nama: {old_name} -> {member.name}"
-            )
+            f"ID={member_id}"
         )
 
         return True
 
     # =========================
-    # DELETE
+    # HAPUS
     # =========================
     def delete_member(self, member_id):
 
@@ -622,40 +639,18 @@ class FamilyTree:
 
         if member_id not in self.members:
 
-            print("Gagal: anggota tidak ditemukan.")
+            print("Anggota tidak ditemukan.")
             return False
 
         member = self.members[member_id]
 
+        # hapus pasangan
         if member.spouse_id:
 
             spouse = self.members[member.spouse_id]
-
             spouse.spouse_id = None
 
-        if member.father_id:
-
-            father = self.members[member.father_id]
-
-            father.children = [
-                child
-                for child in father.children
-                if child.member_id != member_id
-            ]
-
-        if member.mother_id:
-
-            mother = self.members[member.mother_id]
-
-            mother.children = [
-                child
-                for child in mother.children
-                if child.member_id != member_id
-            ]
-
-        if member_id in self.root_ids:
-            self.root_ids.remove(member_id)
-
+        # hapus hubungan anak
         for child in member.children:
 
             if child.father_id == member_id:
@@ -672,9 +667,40 @@ class FamilyTree:
                 if child.member_id not in self.root_ids:
                     self.root_ids.append(child.member_id)
 
+        # hapus dari ayah
+        if member.father_id:
+
+            father = self.members[member.father_id]
+
+            father.children = [
+                child
+                for child in father.children
+                if child.member_id != member_id
+            ]
+
+        # hapus dari ibu
+        if member.mother_id:
+
+            mother = self.members[member.mother_id]
+
+            mother.children = [
+                child
+                for child in mother.children
+                if child.member_id != member_id
+            ]
+
+        # hapus root
+        if member_id in self.root_ids:
+            self.root_ids.remove(member_id)
+
         del self.members[member_id]
 
         print("Anggota berhasil dihapus.")
+
+        log_change(
+            "DELETE",
+            f"ID={member_id}"
+        )
 
         return True
 
@@ -698,16 +724,16 @@ class FamilyTree:
 
         if not results:
 
-            print("Anggota tidak ditemukan.")
+            print("Tidak ditemukan.")
             return
 
         print("\n=== HASIL PENCARIAN ===")
 
         for member in results:
             print(member)
-            
+
     # =========================
-    # AMBIL SAUDARA
+    # SAUDARA
     # =========================
     def get_siblings(self, member_id):
 
@@ -730,50 +756,13 @@ class FamilyTree:
                 and member.mother_id == other.mother_id
             )
 
-            if (
-                same_father
-                or same_mother
-            ):
+            if same_father or same_mother:
                 siblings.append(other)
 
         return siblings
 
     # =========================
-    # AMBIL SAUDARA TIRI
-    # =========================
-    def get_half_siblings(self, member_id):
-
-        member = self.members[member_id]
-
-        results = []
-
-        for other in self.members.values():
-
-            if other.member_id == member_id:
-                continue
-
-            same_father = (
-                member.father_id
-                and member.father_id == other.father_id
-            )
-
-            same_mother = (
-                member.mother_id
-                and member.mother_id == other.mother_id
-            )
-
-            # hanya salah satu yang sama
-            if (
-                (same_father and not same_mother)
-                or
-                (same_mother and not same_father)
-            ):
-                results.append(other)
-
-        return results
-
-    # =========================
-    # AMBIL PAMAN & BIBI
+    # PAMAN / BIBI
     # =========================
     def get_uncles_aunts(self, member_id):
 
@@ -781,15 +770,15 @@ class FamilyTree:
 
         results = []
 
-        parent_ids = []
+        parents = []
 
         if member.father_id:
-            parent_ids.append(member.father_id)
+            parents.append(member.father_id)
 
         if member.mother_id:
-            parent_ids.append(member.mother_id)
+            parents.append(member.mother_id)
 
-        for parent_id in parent_ids:
+        for parent_id in parents:
 
             siblings = self.get_siblings(parent_id)
 
@@ -801,254 +790,23 @@ class FamilyTree:
         return results
 
     # =========================
-    # AMBIL KEPONAKAN
-    # =========================
-    def get_nephews_nieces(self, member_id):
-
-        siblings = self.get_siblings(member_id)
-
-        results = []
-
-        for sibling in siblings:
-
-            for child in sibling.children:
-
-                if child not in results:
-                    results.append(child)
-
-        return results
-
-    # =========================
-    # AMBIL SEPUPU
+    # SEPUPU
     # =========================
     def get_cousins(self, member_id):
 
-        uncles_aunts = self.get_uncles_aunts(member_id)
-
-        results = []
-
-        for person in uncles_aunts:
-
-            for child in person.children:
-
-                if child not in results:
-                    results.append(child)
-
-        return results
-
-    # =========================
-    # TAMPILKAN RELASI LENGKAP
-    # =========================
-    def show_relationships(self, member_id):
-
-        member_id = str(member_id)
-
-        if member_id not in self.members:
-
-            print("Anggota tidak ditemukan.")
-            return
-
-        member = self.members[member_id]
-
-        print("\n=== RELASI KELUARGA ===")
-        print(f"Nama : {member.name}")
-                # pasangan
-        if member.spouse_id:
-
-            spouse = self.members[member.spouse_id]
-
-            if spouse.gender == "L":
-                print(f"Suami : {spouse.name}")
-            else:
-                print(f"Istri : {spouse.name}")
-
-        else:
-            print("Pasangan : -")
-
-        # anak
-        if member.children:
-
-            unique_children = []
-            already = set()
-
-            for child in member.children:
-
-                if child.member_id not in already:
-
-                    unique_children.append(child)
-                    already.add(child.member_id)
-
-            print(
-                "Anak : "
-                +
-                ", ".join(
-                    child.name
-                    for child in unique_children
-                )
-            )
-
-        else:
-            print("Anak : -")
-
-        # bapak
-        if member.father_id:
-
-            father = self.members[member.father_id]
-
-            print(f"Bapak : {father.name}")
-
-        else:
-            print("Bapak : -")
-
-        # ibu
-        if member.mother_id:
-
-            mother = self.members[member.mother_id]
-
-            print(f"Ibu : {mother.name}")
-
-        else:
-            print("Ibu : -")
-
-        # kakek nenek ayah
-        if member.father_id:
-
-            father = self.members[member.father_id]
-
-            kakek1 = (
-                self.members[father.father_id].name
-                if father.father_id
-                else "-"
-            )
-
-            nenek1 = (
-                self.members[father.mother_id].name
-                if father.mother_id
-                else "-"
-            )
-
-            print(f"Kakek (Ayah) : {kakek1}")
-            print(f"Nenek (Ayah) : {nenek1}")
-
-        # kakek nenek ibu
-        if member.mother_id:
-
-            mother = self.members[member.mother_id]
-
-            kakek2 = (
-                self.members[mother.father_id].name
-                if mother.father_id
-                else "-"
-            )
-
-            nenek2 = (
-                self.members[mother.mother_id].name
-                if mother.mother_id
-                else "-"
-            )
-
-            print(f"Kakek (Ibu) : {kakek2}")
-            print(f"Nenek (Ibu) : {nenek2}")
-
-        # saudara kandung
-        siblings = self.get_siblings(member_id)
-
-        if siblings:
-
-            print(
-                "Saudara : "
-                +
-                ", ".join(
-                    s.name for s in siblings
-                )
-            )
-
-        else:
-            print("Saudara : -")
-
-        # saudara tiri
-        half_siblings = self.get_half_siblings(member_id)
-
-        if half_siblings:
-
-            print(
-                "Saudara Tiri : "
-                +
-                ", ".join(
-                    s.name for s in half_siblings
-                )
-            )
-
-        else:
-            print("Saudara Tiri : -")
-
-        # paman
-        uncles = []
-
-        # bibi
-        aunts = []
+        cousins = []
 
         for person in self.get_uncles_aunts(member_id):
 
-            if person.gender == "L":
-                uncles.append(person.name)
-            else:
-                aunts.append(person.name)
+            for child in person.children:
 
-        print(
-            "Paman : "
-            +
-            (
-                ", ".join(uncles)
-                if uncles
-                else "-"
-            )
-        )
+                if child not in cousins:
+                    cousins.append(child)
 
-        print(
-            "Bibi : "
-            +
-            (
-                ", ".join(aunts)
-                if aunts
-                else "-"
-            )
-        )
-
-        # keponakan
-        nephews = self.get_nephews_nieces(member_id)
-
-        if nephews:
-
-            print(
-                "Keponakan : "
-                +
-                ", ".join(
-                    n.name for n in nephews
-                )
-            )
-
-        else:
-            print("Keponakan : -")
-
-        # sepupu
-        cousins = self.get_cousins(member_id)
-
-        if cousins:
-
-            print(
-                "Sepupu : "
-                +
-                ", ".join(
-                    c.name for c in cousins
-                )
-            )
-
-        else:
-            print("Sepupu : -")
+        return cousins
 
     # =========================
-    # CEK STATUS RELASI
+    # RELASI
     # =========================
     def get_relationship_status(self, id1, id2):
 
@@ -1057,8 +815,7 @@ class FamilyTree:
 
         if (
             id1 not in self.members
-            or
-            id2 not in self.members
+            or id2 not in self.members
         ):
 
             return "Anggota tidak ditemukan"
@@ -1066,72 +823,51 @@ class FamilyTree:
         person1 = self.members[id1]
         person2 = self.members[id2]
 
-        # suami istri
+        # pasangan
         if person1.spouse_id == id2:
             return "SUAMI ISTRI"
 
-        # ayah anak
+        # ayah
         if person2.father_id == id1:
             return "AYAH ANAK"
 
         if person1.father_id == id2:
             return "ANAK AYAH"
 
-        # ibu anak
+        # ibu
         if person2.mother_id == id1:
             return "IBU ANAK"
 
         if person1.mother_id == id2:
             return "ANAK IBU"
 
-        # saudara kandung
-        siblings = self.get_siblings(id1)
+        # saudara
+        for sibling in self.get_siblings(id1):
 
-        for s in siblings:
-
-            if s.member_id == id2:
+            if sibling.member_id == id2:
                 return "SAUDARA"
 
-        # saudara tiri
-        half = self.get_half_siblings(id1)
-
-        for s in half:
-
-            if s.member_id == id2:
-                return "SAUDARA TIRI"
-
         # paman/bibi
-        uncles_aunts = self.get_uncles_aunts(id2)
+        for ua in self.get_uncles_aunts(id2):
 
-        for p in uncles_aunts:
+            if ua.member_id == id1:
 
-            if p.member_id == id1:
-
-                if person1.gender == "L":
-                    return "PAMAN"
-
-                return "BIBI"
-
-        # keponakan
-        nephews = self.get_nephews_nieces(id1)
-
-        for n in nephews:
-
-            if n.member_id == id2:
-                return "KEPONAKAN"
+                return (
+                    "PAMAN"
+                    if person1.gender == "L"
+                    else "BIBI"
+                )
 
         # sepupu
-        cousins = self.get_cousins(id1)
+        for cousin in self.get_cousins(id1):
 
-        for c in cousins:
-
-            if c.member_id == id2:
+            if cousin.member_id == id2:
                 return "SEPUPU"
 
         return "TIDAK ADA RELASI"
 
     # =========================
-    # FILE HANDLING
+    # FILE
     # =========================
     def get_all_data(self):
 
@@ -1145,7 +881,9 @@ class FamilyTree:
         self.members = {}
         self.root_ids = []
 
-        # load member
+        # =========================
+        # LOAD MEMBER
+        # =========================
         for row in rows:
 
             member_id = str(row["id"])
@@ -1181,18 +919,52 @@ class FamilyTree:
                 spouse_id
             )
 
-        # bangun tree
+        # =========================
+        # BUILD TREE
+        # =========================
+        visited_roots = set()
+
         for member in self.members.values():
 
+            # =====================
+            # ROOT
+            # =====================
             if (
                 not member.father_id
                 and not member.mother_id
             ):
 
-                self.root_ids.append(
-                    member.member_id
-                )
+                # sudah pernah diproses
+                if member.member_id in visited_roots:
+                    continue
 
+                # jika punya pasangan
+                if member.spouse_id:
+
+                    spouse_id = member.spouse_id
+
+                    # pilih ID terkecil jadi root
+                    root_id = min(
+                        member.member_id,
+                        spouse_id
+                    )
+
+                    if root_id not in self.root_ids:
+                        self.root_ids.append(root_id)
+
+                    visited_roots.add(member.member_id)
+                    visited_roots.add(spouse_id)
+
+                else:
+
+                    if member.member_id not in self.root_ids:
+                        self.root_ids.append(member.member_id)
+
+                    visited_roots.add(member.member_id)
+
+            # =====================
+            # HUBUNGKAN ANAK
+            # =====================
             if member.father_id:
 
                 self.members[
@@ -1209,23 +981,27 @@ class FamilyTree:
 # =========================
 # LOG
 # =========================
-def log_change(action, detail, filename=LOG_FILE):
+def log_change(action, detail):
 
     timestamp = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )
 
-    entry = f"[{timestamp}] [{action}] {detail}\n"
+    entry = (
+        f"[{timestamp}] "
+        f"[{action}] "
+        f"{detail}\n"
+    )
 
     try:
 
         with open(
-            filename,
-            mode="a",
+            LOG_FILE,
+            "a",
             encoding="utf-8"
-        ) as f:
+        ) as file:
 
-            f.write(entry)
+            file.write(entry)
 
     except Exception as e:
 
@@ -1235,15 +1011,13 @@ def log_change(action, detail, filename=LOG_FILE):
 # =========================
 # SAVE CSV
 # =========================
-def save_to_csv(tree, filename=CSV_FILE):
-
-    data = tree.get_all_data()
+def save_to_csv(tree):
 
     try:
 
         with open(
-            filename,
-            mode="w",
+            CSV_FILE,
+            "w",
             newline="",
             encoding="utf-8"
         ) as file:
@@ -1261,34 +1035,28 @@ def save_to_csv(tree, filename=CSV_FILE):
             )
 
             writer.writeheader()
-            writer.writerows(data)
+            writer.writerows(tree.get_all_data())
 
-        print(
-            f"Data berhasil disimpan ke {filename}"
-        )
+        print("Data berhasil disimpan.")
 
     except Exception as e:
 
-        print(
-            f"Terjadi kesalahan saat menyimpan: {e}"
-        )
+        print(f"Gagal menyimpan: {e}")
 
 
 # =========================
 # LOAD CSV
 # =========================
-def load_from_csv(tree, filename=CSV_FILE):
+def load_from_csv(tree):
 
-    if not os.path.exists(filename):
-
-        print(f"File {filename} belum ada.")
+    if not os.path.exists(CSV_FILE):
         return
 
     try:
 
         with open(
-            filename,
-            mode="r",
+            CSV_FILE,
+            "r",
             newline="",
             encoding="utf-8"
         ) as file:
@@ -1299,15 +1067,11 @@ def load_from_csv(tree, filename=CSV_FILE):
 
         tree.build_from_rows(rows)
 
-        print(
-            f"Data berhasil dibaca dari {filename}"
-        )
+        print("Data berhasil dimuat.")
 
     except Exception as e:
 
-        print(
-            f"Terjadi kesalahan saat membaca file: {e}"
-        )
+        print(f"Gagal membaca CSV: {e}")
 
 
 # =========================
@@ -1334,7 +1098,7 @@ def input_numeric_id(prompt):
         if data.isdigit():
             return data
 
-        print("ID harus berupa angka.")
+        print("ID harus angka.")
 
 
 def input_gender(prompt):
@@ -1346,7 +1110,7 @@ def input_gender(prompt):
         if gender in ["L", "P"]:
             return gender
 
-        print("Gender harus L atau P.")
+        print("Gender harus L/P.")
 
 
 def input_parent_id(tree, prompt):
@@ -1360,7 +1124,7 @@ def input_parent_id(tree, prompt):
 
         if not data.isdigit():
 
-            print("ID harus berupa angka.")
+            print("ID harus angka.")
             continue
 
         if data not in tree.members:
@@ -1381,7 +1145,7 @@ def generate_member_id(tree):
 
     max_id = max(
         int(member_id)
-        for member_id in tree.members.keys()
+        for member_id in tree.members
     )
 
     return str(max_id + 1)
@@ -1407,7 +1171,7 @@ def main():
         print("6. Cari anggota")
         print("7. Tampilkan tree")
         print("8. Simpan CSV")
-        print("9. Relasi keluarga")
+        print("9. Cek hubungan")
         print("0. Keluar")
 
         choice = input("Pilih menu: ").strip()
@@ -1429,22 +1193,17 @@ def main():
 
             father_id = input_parent_id(
                 tree,
-                "Masukkan ID Ayah (kosongkan jika tidak ada): "
+                "ID Ayah (kosong jika tidak ada): "
             )
 
-            mother_id = None
-
-            # hanya minta ibu jika ayah kosong
-            if not father_id:
-
-                mother_id = input_parent_id(
-                    tree,
-                    "Masukkan ID Ibu (kosongkan jika tidak ada): "
-                )
+            mother_id = input_parent_id(
+                tree,
+                "ID Ibu (kosong jika tidak ada): "
+            )
 
             spouse_id = input_parent_id(
                 tree,
-                "Masukkan ID Pasangan (kosongkan jika tidak ada): "
+                "ID Pasangan (kosong jika tidak ada): "
             )
 
             tree.add_member(
@@ -1456,7 +1215,7 @@ def main():
                 spouse_id
             )
 
-        # tampilkan
+        # tampil semua
         elif choice == "2":
 
             tree.show_all_members()
@@ -1478,12 +1237,17 @@ def main():
             )
 
             new_name = input(
-                "Nama baru (kosongkan jika tidak diubah): "
+                "Nama baru (kosong jika tidak diubah): "
             ).strip()
 
             new_gender = input(
-                "Gender baru (L/P): "
+                "Gender baru L/P (kosong jika tidak diubah): "
             ).strip().upper()
+
+            new_spouse_id = input(
+                "ID pasangan baru "
+                "(kosong = tidak diubah, '-' = cerai): "
+            ).strip()
 
             if new_name == "":
                 new_name = None
@@ -1491,13 +1255,20 @@ def main():
             if new_gender == "":
                 new_gender = None
 
+            if new_spouse_id == "":
+                new_spouse_id = None
+
+            elif new_spouse_id == "-":
+                new_spouse_id = ""
+
             tree.update_member(
                 member_id,
                 new_name,
-                new_gender
+                new_gender,
+                new_spouse_id
             )
 
-        # delete
+        # hapus
         elif choice == "5":
 
             member_id = input_numeric_id(
@@ -1506,11 +1277,11 @@ def main():
 
             tree.delete_member(member_id)
 
-        # search
+        # cari
         elif choice == "6":
 
             keyword = input_nonempty(
-                "Masukkan nama atau ID: "
+                "Masukkan nama / ID: "
             )
 
             tree.search_member(keyword)
@@ -1524,58 +1295,31 @@ def main():
         elif choice == "8":
 
             save_to_csv(tree)
-        
-                # =========================
-                # RELASI KELUARGA
-                # =========================
+
+        # relasi
         elif choice == "9":
 
-                    print("\n=== MENU RELASI ===")
-                    print("1. Lihat relasi lengkap")
-                    print("2. Cek hubungan dua orang")
+            id1 = input_numeric_id(
+                "ID orang pertama: "
+            )
 
-                    sub = input("Pilih: ").strip()
+            id2 = input_numeric_id(
+                "ID orang kedua: "
+            )
 
-                    # relasi lengkap
-                    if sub == "1":
+            result = tree.get_relationship_status(
+                id1,
+                id2
+            )
 
-                        member_id = input_numeric_id(
-                            "Masukkan ID anggota: "
-                        )
+            print(f"Relasi: {result}")
 
-                        tree.show_relationships(member_id)
-
-                    # hubungan dua orang
-                    elif sub == "2":
-
-                        id1 = input_numeric_id(
-                            "Masukkan ID orang pertama: "
-                        )
-
-                        id2 = input_numeric_id(
-                            "Masukkan ID orang kedua: "
-                        )
-
-                        result = tree.get_relationship_status(
-                            id1,
-                            id2
-                        )
-
-                        print(
-                            f"\nStatus Relasi: {result}"
-                        )
-
-                    else:
-
-                        print("Pilihan tidak valid.")
-
-        # exit
+        # keluar
         elif choice == "0":
 
             save_to_csv(tree)
 
             print("Program selesai.")
-
             break
 
         else:

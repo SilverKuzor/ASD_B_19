@@ -11,3 +11,7 @@
 [2026-05-20 09:40:59] [TAMBAH] ID=3 | Nama=Rika | Gender=P | Ayah=1 | Ibu=2 | Pasangan=-
 [2026-05-20 09:51:42] [TAMBAH] ID=3 | Nama=Rika | Gender=P
 [2026-05-20 09:51:56] [TAMBAH] ID=4 | Nama=Kuzor | Gender=L
+[2026-05-20 11:33:02] [UPDATE] ID=1 | Nama: Wahyu -> Wahyu
+[2026-05-20 11:42:28] [UPDATE] ID=1 | Nama: Wahyu -> Wahyu
+[2026-05-20 11:42:39] [TAMBAH] ID=41 | Nama=Rika | Gender=P
+[2026-05-20 12:06:52] [UPDATE] ID=1 | Nama: Wahyu -> Wahyu
