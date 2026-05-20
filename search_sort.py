@@ -107,21 +107,6 @@ def sort_members(tree, by="name", reverse=False):
             gen = tree.get_generation(member.member_id)
             print(f"{member} | Generasi: {gen}")
 
-        elif by == "father_id":
-            father_text = (
-                f"Ayah ID: {member.father_id}"
-                if member.father_id
-                else "Ayah ID: -"
-            )
-            print(f"{member} | {father_text}")
-
-        elif by == "mother_id":
-            mother_text = (
-                f"Ibu ID: {member.mother_id}"
-                if member.mother_id
-                else "Ibu ID: -"
-            )
-            print(f"{member} | {mother_text}")
 
         else:
             print(member)

@@ -178,71 +178,169 @@ def main():
 
             tree.show_all_members()
 
-        # detail
+                # detail
         elif choice == "3":
 
-            member_id = input_numeric_id(
-                "Masukkan ID anggota: "
-            )
+            while True:
 
-            tree.show_member_detail(member_id)
+                print("\n=== MENU DETAIL ===")
+                print("1. Lihat detail anggota")
+                print("0. Kembali")
+
+                sub = input(
+                    "Pilih menu: "
+                ).strip()
+
+                # detail anggota
+                if sub == "1":
+
+                    member_id = input_numeric_id(
+                        "Masukkan ID anggota: "
+                    )
+
+                    tree.show_member_detail(
+                        member_id
+                    )
+
+                # kembali
+                elif sub == "0":
+
+                    break
+
+                else:
+
+                    print("Menu tidak valid.")
 
         # update
         elif choice == "4":
 
-            member_id = input_numeric_id(
-                "Masukkan ID anggota: "
-            )
+            while True:
 
-            new_name = input(
-                "Nama baru (kosong jika tidak diubah): "
-            ).strip()
+                print("\n=== MENU UPDATE ===")
+                print("1. Update anggota")
+                print("0. Kembali")
 
-            new_gender = input(
-                "Gender baru L/P (kosong jika tidak diubah): "
-            ).strip().upper()
+                sub = input(
+                    "Pilih menu: "
+                ).strip()
 
-            new_spouse_id = input(
-                "ID pasangan baru "
-                "(kosong = tidak diubah, '-' = cerai): "
-            ).strip()
+                # update anggota
+                if sub == "1":
 
-            if new_name == "":
-                new_name = None
+                    member_id = input_numeric_id(
+                        "Masukkan ID anggota: "
+                    )
 
-            if new_gender == "":
-                new_gender = None
+                    new_name = input(
+                        "Nama baru "
+                        "(kosong jika tidak diubah): "
+                    ).strip()
 
-            if new_spouse_id == "":
-                new_spouse_id = None
+                    new_gender = input(
+                        "Gender baru L/P "
+                        "(kosong jika tidak diubah): "
+                    ).strip().upper()
 
-            elif new_spouse_id == "-":
-                new_spouse_id = ""
+                    new_spouse_id = input(
+                        "ID pasangan baru "
+                        "(kosong = tidak diubah, "
+                        "'-' = cerai): "
+                    ).strip()
 
-            tree.update_member(
-                member_id,
-                new_name,
-                new_gender,
-                new_spouse_id
-            )
+                    if new_name == "":
+                        new_name = None
+
+                    if new_gender == "":
+                        new_gender = None
+
+                    if new_spouse_id == "":
+                        new_spouse_id = None
+
+                    elif new_spouse_id == "-":
+                        new_spouse_id = ""
+
+                    tree.update_member(
+                        member_id,
+                        new_name,
+                        new_gender,
+                        new_spouse_id
+                    )
+
+                # kembali
+                elif sub == "0":
+
+                    break
+
+                else:
+
+                    print("Menu tidak valid.")
 
         # hapus
         elif choice == "5":
 
-            member_id = input_numeric_id(
-                "Masukkan ID anggota: "
-            )
+            while True:
 
-            tree.delete_member(member_id)
+                print("\n=== MENU HAPUS ===")
+                print("1. Hapus anggota")
+                print("0. Kembali")
+
+                sub = input(
+                    "Pilih menu: "
+                ).strip()
+
+                # hapus anggota
+                if sub == "1":
+
+                    member_id = input_numeric_id(
+                        "Masukkan ID anggota: "
+                    )
+
+                    tree.delete_member(
+                        member_id
+                    )
+
+                # kembali
+                elif sub == "0":
+
+                    break
+
+                else:
+
+                    print("Menu tidak valid.")
 
         # cari
         elif choice == "6":
 
-            keyword = input_nonempty(
-                "Masukkan nama / ID: "
-            )
+            while True:
 
-            search_member(tree, keyword)
+                print("\n=== MENU CARI ===")
+                print("1. Cari anggota")
+                print("0. Kembali")
+
+                sub = input(
+                    "Pilih menu: "
+                ).strip()
+
+                # cari anggota
+                if sub == "1":
+
+                    keyword = input_nonempty(
+                        "Masukkan nama / ID: "
+                    )
+
+                    search_member(
+                        tree,
+                        keyword
+                    )
+
+                # kembali
+                elif sub == "0":
+
+                    break
+
+                else:
+
+                    print("Menu tidak valid.")
 
         # tree
         elif choice == "7":
@@ -257,70 +355,116 @@ def main():
         # relasi
         elif choice == "9":
 
-            id1 = input_numeric_id(
-                "ID orang pertama: "
-            )
+                    id1 = input_numeric_id(
+                        "ID orang pertama: "
+                    )
 
-            id2 = input_numeric_id(
-                "ID orang kedua: "
-            )
+                    id2 = input_numeric_id(
+                        "ID orang kedua: "
+                    )
 
-            result = tree.get_relationship_status(
-                id1,
-                id2
-            )
+                    if (
+                        id1 not in tree.members
+                        or id2 not in tree.members
+                    ):
 
-            print(f"Relasi: {result}")
+                        print("Anggota tidak ditemukan.")
+                        continue
+
+                    person1 = tree.members[id1]
+                    person2 = tree.members[id2]
+
+                    result = tree.get_relationship_status(
+                        id1,
+                        id2
+                    )
+
+                    print("\n=== HASIL RELASI ===")
+
+                    print(
+                        f"{person1.name} "
+                        f"<-> "
+                        f"{person2.name}"
+                    )
+
+                    print(f"Relasi : {result}")
+                    continue
+
 
         # urutkan
         elif choice == "10":
 
-            print("\n=== MENU URUTKAN ===")
-            print("Pilih kriteria untuk mengurutkan anggota:")
-            print("1. Nama")
-            print("2. ID")
-            print("3. Generasi")
-            print("4. Gender")
-            print("5. Ayah ID")
-            print("6. Ibu ID")
+            while True:
 
-            sort_choice = input(
-                "Pilih kriteria: "
-            ).strip()
+                print("\n=== MENU URUTKAN ===")
+                print("1. Nama")
+                print("2. ID")
+                print("3. Generasi")
+                print("4. Gender")
+                print("0. Kembali")
 
-            sort_by = None
+                sort_choice = input(
+                    "Pilih kriteria: "
+                ).strip()
 
-            if sort_choice == "1":
-                sort_by = "name"
-            elif sort_choice == "2":
-                sort_by = "id"
-            elif sort_choice == "3":
-                sort_by = "generation"
-            elif sort_choice == "4":
-                sort_by = "gender"
-            elif sort_choice == "5":
-                sort_by = "father_id"
-            elif sort_choice == "6":
-                sort_by = "mother_id"
-            else:
-                print("Kriteria urut tidak valid.")
-                continue
+                # kembali
+                if sort_choice == "0":
 
-            print("\nPilih urutan:")
-            print("1. Naik (A-Z, 0-9)")
-            print("2. Menurun (Z-A, 9-0)")
+                    break
 
-            order_choice = input("Pilih urutan: ").strip()
+                sort_by = None
 
-            if order_choice == "1":
-                reverse = False
-            elif order_choice == "2":
-                reverse = True
-            else:
-                print("Urutan tidak valid.")
-                continue
+                if sort_choice == "1":
 
-            sort_members(tree, by=sort_by, reverse=reverse)
+                    sort_by = "name"
+
+                elif sort_choice == "2":
+
+                    sort_by = "id"
+
+                elif sort_choice == "3":
+
+                    sort_by = "generation"
+
+                elif sort_choice == "4":
+
+                    sort_by = "gender"
+
+                else:
+
+                    print(
+                        "Kriteria urut tidak valid."
+                    )
+
+                    continue
+
+                print("\n=== MENU URUTAN ===")
+                print("1. Naik")
+                print("2. Menurun")
+
+                order_choice = input(
+                    "Pilih urutan: "
+                ).strip()
+
+                if order_choice == "1":
+
+                    reverse = False
+
+                elif order_choice == "2":
+
+                    reverse = True
+
+                else:
+
+                    print("Urutan tidak valid.")
+
+                    continue
+
+                sort_members(
+                    tree,
+                    by=sort_by,
+                    reverse=reverse
+                )
 
         # keluar
         elif choice == "0":
